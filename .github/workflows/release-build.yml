@@ -1,0 +1,65 @@
+name: Build ZScript Binaries
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: zsc-linux
+          - os: macos-latest
+            artifact: zsc-macos
+          - os: windows-latest
+            artifact: zsc-windows
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        working-directory: compiler
+        run: bun install
+
+      - name: Build zsc binary
+        working-directory: compiler
+        run: |
+          mkdir dist
+          bun build zsc.js --compile --outfile dist/zsc
+
+      # -------- Linux & macOS --------
+      - name: Package (Linux / macOS)
+        if: runner.os != 'Windows'
+        working-directory: compiler/dist
+        run: |
+          chmod +x zsc
+          tar -czf ${{ matrix.artifact }}.tar.gz zsc
+
+      # -------- Windows --------
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        working-directory: compiler/dist
+        run: |
+          powershell Compress-Archive zsc.exe ${{ matrix.artifact }}.zip
+
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            compiler/dist/*.zip
+            compiler/dist/*.tar.gz
