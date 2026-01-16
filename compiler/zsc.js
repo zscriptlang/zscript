@@ -22,7 +22,8 @@ const VERSION = "0.3.4";
    CLI
 ========================= */
 
-const argv = process.argv.slice(2);
+// IMPORTANT: slice(1), NOT slice(2)
+const argv = process.argv.slice(1);
 const command = argv[0];
 
 function printHelp() {
@@ -141,7 +142,6 @@ try {
   if (command === "build") {
     const outDir = path.join(projectRoot, "bin/js");
 
-
     console.log("Building project");
     mkdirSync(outDir, { recursive: true });
 
@@ -167,18 +167,14 @@ try {
     );
 
     const result = spawnSync(
-  "bun",
-  [entryJs, ...runArgs],
-  { stdio: "inherit" }
-);
+      "bun",
+      [entryJs, ...runArgs],
+      { stdio: "inherit" }
+    );
+
     process.exit(result.status ?? 0);
   }
 } catch (err) {
   console.error(err.message);
   process.exit(1);
 }
-
-
-
-
-
