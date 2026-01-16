@@ -1,0 +1,40 @@
+name: Build zsc binaries
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        working-directory: compiler
+        run: bun install
+
+      - name: Build zsc binary
+        working-directory: compiler
+        run: |
+          mkdir -p bin
+          bun build zsc.js --compile --outfile bin/zsc
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zsc-${{ matrix.os }}
+          path: compiler/bin/*
