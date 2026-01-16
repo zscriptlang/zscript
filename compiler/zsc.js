@@ -16,7 +16,7 @@ import { SemanticAnalyzer } from "./semantic/SemanticAnalyzer.js";
    METADATA
 ========================= */
 
-const VERSION = "0.3.0";
+const VERSION = "0.3.1";
 
 /* =========================
    CLI
@@ -177,4 +177,5 @@ try {
   console.error(err.message);
   process.exit(1);
 }
+
 
