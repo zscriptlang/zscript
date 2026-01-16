@@ -36,12 +36,14 @@ jobs:
           mkdir -p dist
           bun build zsc.js --compile --outfile dist/zsc
 
+      # Linux & macOS → tar.gz
       - name: Package artifact (Linux & macOS)
         if: runner.os != 'Windows'
         run: |
           cd compiler/dist
           tar -czf zsc-${{ runner.os }}.tar.gz zsc
 
+      # Windows → zip (NO RENAME)
       - name: Package artifact (Windows)
         if: runner.os == 'Windows'
         run: |
