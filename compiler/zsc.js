@@ -19,12 +19,43 @@ import { SemanticAnalyzer } from "./semantic/SemanticAnalyzer.js";
 const VERSION = "0.3.4";
 
 /* =========================
-   CLI
+   CLI ARG NORMALIZATION
 ========================= */
 
-// IMPORTANT: slice(1), NOT slice(2)
-const argv = process.argv.slice(1);
+/*
+  Works for:
+  - bun zsc.js ...
+  - node zsc.js ...
+  - zsc.exe ...
+*/
+
+let argv = [...process.argv];
+
+// Remove runtime (node / bun)
+if (
+  argv[0].endsWith("node") ||
+  argv[0].endsWith("node.exe") ||
+  argv[0].endsWith("bun") ||
+  argv[0].endsWith("bun.exe")
+) {
+  argv.shift();
+}
+
+// Remove script / binary path
+if (
+  argv[0]?.endsWith(".js") ||
+  argv[0]?.endsWith(".exe") ||
+  argv[0] === "zsc"
+) {
+  argv.shift();
+}
+
 const command = argv[0];
+const args = argv.slice(1);
+
+/* =========================
+   HELP / VERSION
+========================= */
 
 function printHelp() {
   console.log(`
@@ -55,7 +86,10 @@ function printVersion() {
   console.log(`zsc version ${VERSION}`);
 }
 
-/* Global flags */
+/* =========================
+   GLOBAL FLAGS
+========================= */
+
 if (!command || command === "-h" || command === "--help") {
   printHelp();
   process.exit(0);
@@ -76,15 +110,15 @@ if (command !== "build" && command !== "run") {
    ARGUMENT PARSING
 ========================= */
 
-const entryFile = argv[1];
+const entryFile = args[0];
 if (!entryFile) {
   console.error("error: no entry file specified");
   process.exit(1);
 }
 
-const runArgsIndex = argv.indexOf("--");
+const runArgsIndex = args.indexOf("--");
 const runArgs =
-  runArgsIndex !== -1 ? argv.slice(runArgsIndex + 1) : [];
+  runArgsIndex !== -1 ? args.slice(runArgsIndex + 1) : [];
 
 const entryAbs = path.resolve(entryFile);
 const projectRoot = path.dirname(entryAbs);
