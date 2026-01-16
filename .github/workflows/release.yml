@@ -29,26 +29,28 @@ jobs:
         run: |
           cd compiler
           bun install
+        shell: bash
 
       - name: Build zsc binary
         run: |
           cd compiler
-          mkdir -p dist
+          mkdir dist
           bun build zsc.js --compile --outfile dist/zsc
-
-      
+        shell: bash
 
       - name: Zip artifact
         run: |
           cd compiler/dist
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            powershell Compress-Archive zsc.exe zsc-${{ matrix.os }}.zip
+            zip zsc-windows-latest.zip zsc.exe
+          elif [ "${{ matrix.os }}" = "macos-latest" ]; then
+            zip zsc-macos-latest.zip zsc
           else
-            zip zsc-${{ matrix.os }}.zip zsc
+            zip zsc-ubuntu-latest.zip zsc
           fi
         shell: bash
 
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v1
         with:
-          files: compiler/dist/zsc-${{ matrix.os }}.zip
+          files: compiler/dist/*.zip
