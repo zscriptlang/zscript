@@ -167,14 +167,14 @@ try {
     );
 
     const result = spawnSync(
-      process.execPath,
-      [entryJs, ...runArgs],
-      { stdio: "inherit" }
-    );
-
+  "bun",
+  [entryJs, ...runArgs],
+  { stdio: "inherit" }
+);
     process.exit(result.status ?? 0);
   }
 } catch (err) {
   console.error(err.message);
   process.exit(1);
 }
+
