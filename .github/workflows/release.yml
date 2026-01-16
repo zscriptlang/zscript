@@ -36,23 +36,21 @@ jobs:
           mkdir -p dist
           bun build zsc.js --compile --outfile dist/zsc
 
-      # ---------- ZIP (LINUX / MACOS) ----------
-      - name: Zip artifact (Unix)
+      - name: Package artifact (Linux & macOS)
         if: runner.os != 'Windows'
         run: |
           cd compiler/dist
-          zip zsc-${{ matrix.os }}.zip zsc
+          tar -czf zsc-${{ runner.os }}.tar.gz zsc
 
-      # ---------- ZIP (WINDOWS) ----------
-      - name: Zip artifact (Windows)
+      - name: Package artifact (Windows)
         if: runner.os == 'Windows'
         run: |
-          cd compiler\dist
-          ren zsc zsc.exe
-          powershell Compress-Archive zsc.exe zsc-${{ matrix.os }}.zip
+          cd compiler/dist
+          powershell Compress-Archive zsc.exe zsc-Windows.zip
 
-      # ---------- UPLOAD ----------
-      - name: Upload Release Asset
+      - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
         with:
-          files: compiler/dist/zsc-${{ matrix.os }}.zip
+          files: |
+            compiler/dist/*.zip
+            compiler/dist/*.tar.gz
