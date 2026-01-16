@@ -1,0 +1,181 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import antlr4 from "antlr4";
+import ZScriptLexer from "./ZScriptLexer.js";
+import ZScriptParser from "./ZScriptParser.js";
+import ZScriptVisitor from "./ZScriptVisitor.js";
+
+/* =========================
+   TYPE COLLECTOR
+========================= */
+
+class TypeCollector extends ZScriptVisitor {
+  constructor() {
+    super();
+    this.exports = new Map(); // name -> symbol
+  }
+
+  /* ---------- STRUCT ---------- */
+
+  visitStructDecl(ctx) {
+    const name = ctx.Identifier().getText();
+    const fields = {};
+
+    for (const field of ctx.structField()) {
+      const fieldName = field.Identifier().getText();
+      const fieldType = field.type().getText();
+      fields[fieldName] = fieldType;
+    }
+
+    this.exports.set(name, {
+      kind: "struct",
+      name,
+      fields
+    });
+
+    return null;
+  }
+
+  /* ---------- ENUM ---------- */
+
+  visitEnumDecl(ctx) {
+    const ids = ctx.Identifier();
+    const name = ids[0].getText();
+    const members = ids.slice(1).map(id => id.getText());
+
+    this.exports.set(name, {
+      kind: "enum",
+      name,
+      members
+    });
+
+    return null;
+  }
+
+  /* ---------- FUNCTION ---------- */
+
+  visitFunctionDecl(ctx) {
+    const name = ctx.Identifier().getText();
+
+    const params = [];
+    if (ctx.formalParameterList()) {
+      for (const p of ctx.formalParameterList().parameter()) {
+        params.push({
+          name: p.Identifier().getText(),
+          type: p.type()?.getText() ?? "any"
+        });
+      }
+    }
+
+    const returnType = ctx.type()?.getText() ?? "void";
+
+    this.exports.set(name, {
+      kind: "function",
+      name,
+      params,
+      returnType
+    });
+
+    return null;
+  }
+
+  /* ---------- CLASS ---------- */
+
+  visitClassDecl(ctx) {
+    const name = ctx.Identifier(0).getText();
+    const methods = {};
+    const fields = {};
+
+    for (const el of ctx.classElement()) {
+      // Method
+      if (el.ClassMethod) {
+        const methodName = el.Identifier().getText();
+        const params = [];
+
+        if (el.formalParameterList()) {
+          for (const p of el.formalParameterList().parameter()) {
+            params.push({
+              name: p.Identifier().getText(),
+              type: p.type()?.getText() ?? "any"
+            });
+          }
+        }
+
+        const returnType = el.type()?.getText() ?? "void";
+
+        methods[methodName] = {
+          params,
+          returnType
+        };
+      }
+
+      // Field
+      if (el.varDecl) {
+        const fieldName = el.varDecl().Identifier().getText();
+        const fieldType = el.varDecl().type()?.getText() ?? "any";
+        fields[fieldName] = fieldType;
+      }
+    }
+
+    this.exports.set(name, {
+      kind: "class",
+      name,
+      methods,
+      fields
+    });
+
+    return null;
+  }
+
+  /* ---------- EXPORT ---------- */
+
+  visitExportStmt(ctx) {
+    return this.visit(ctx.getChild(1));
+  }
+}
+
+/* =========================
+   PROJECT SCANNER
+========================= */
+
+export class ProjectScanner {
+  constructor() {
+    this.modules = new Map(); // absPath -> { exports, imports }
+  }
+
+  scan(entryFile) {
+    const absPath = path.resolve(entryFile);
+    if (this.modules.has(absPath)) return;
+
+    const source = readFileSync(absPath, "utf-8");
+    const chars = new antlr4.InputStream(source);
+    const lexer = new ZScriptLexer(chars);
+    const tokens = new antlr4.CommonTokenStream(lexer);
+    const parser = new ZScriptParser(tokens);
+    const tree = parser.program();
+
+    const collector = new TypeCollector();
+    collector.visit(tree);
+
+    const imports = [];
+
+    for (const stmt of tree.statement()) {
+      const imp = stmt.importStmt?.();
+      if (!imp) continue;
+
+      const importPath = imp.StringLiteral().getText().slice(1, -1);
+      const resolved = path.resolve(
+        path.dirname(absPath),
+        importPath.endsWith(".zs") ? importPath : importPath + ".zs"
+      );
+
+      imports.push(resolved);
+      this.scan(resolved);
+    }
+
+    this.modules.set(absPath, {
+      exports: collector.exports,
+      imports
+    });
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "dependencies": {
+    "antlr4": "^4.13.2"
+  },
+  "bin": {
+    "zsc": "./zsc.js"
+  },
+  "name": "zscript",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}

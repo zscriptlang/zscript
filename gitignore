@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+bin/
+.zsc-cache/
+
+# Bun / Node artifacts
+bun.lockb
+*.exe
+
+# Generated grammar artifacts
+*.interp
+*.tokens
+
+# Logs
+*.log
+
+# OS junk
+.DS_Store
+Thumbs.db
