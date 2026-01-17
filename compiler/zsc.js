@@ -16,7 +16,7 @@ import { SemanticAnalyzer } from "./semantic/SemanticAnalyzer.js";
    METADATA
 ========================= */
 
-const VERSION = "0.3.5";
+const VERSION = "0.3.6";
 
 /* =========================
    CLI ARG PARSING (SAFE)
@@ -210,3 +210,4 @@ try {
   console.error(err.message);
   process.exit(1);
 }
+
