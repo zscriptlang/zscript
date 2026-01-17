@@ -14,44 +14,55 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # ---------- LINUX ----------
+          # ---------- LINUX X64 ----------
           - os: ubuntu-latest
-            name: linux-x64
+            name: linux-x64-avx2
             target: bun-linux-x64
-            # We add a 'variant' field to control output naming
-            variant: "" 
+            variant: "-avx2"
 
           - os: ubuntu-latest
-            name: linux-x64-musl
-            target: bun-linux-x64-musl
-            variant: "-musl"
+            name: linux-x64-baseline
+            target: bun-linux-x64-baseline
+            variant: "-baseline"
 
+          # ---------- LINUX MUSL (Alpine) ----------
+          - os: ubuntu-latest
+            name: linux-x64-musl-avx2
+            target: bun-linux-x64-musl
+            variant: "-musl-avx2"
+
+          - os: ubuntu-latest
+            name: linux-x64-musl-baseline
+            target: bun-linux-x64-musl-baseline
+            variant: "-musl-baseline"
+
+          # ---------- LINUX ARM64 ----------
           - os: ubuntu-latest
             name: linux-arm64
             target: bun-linux-arm64
             variant: ""
 
-          - os: ubuntu-latest
-            name: linux-arm64-musl
-            target: bun-linux-arm64-musl
-            variant: "-musl"
-
-          # ---------- WINDOWS (AVX2 and BASELINE VARIANTS ADDED) ----------
-          - os: windows-latest
+          # ---------- WINDOWS X64 ----------
+          - os: ubuntu-latest # Using Linux to cross-compile Windows prevents extraction errors
             name: windows-x64-avx2
             target: bun-windows-x64
             variant: "-avx2"
 
-          - os: windows-latest
+          - os: ubuntu-latest
             name: windows-x64-baseline
             target: bun-windows-x64-baseline
             variant: "-baseline"
 
           # ---------- MACOS ----------
           - os: macos-latest
-            name: macos-x64
+            name: macos-x64-avx2
             target: bun-darwin-x64
-            variant: ""
+            variant: "-avx2"
+
+          - os: macos-latest
+            name: macos-x64-baseline
+            target: bun-darwin-x64-baseline
+            variant: "-baseline"
 
           - os: macos-latest
             name: macos-arm64
@@ -65,7 +76,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@v1
         with:
-          bun-version: latest
+          bun-version: 1.3.6 # Fixed to the version you specified
 
       - name: Install dependencies
         working-directory: compiler
@@ -77,35 +88,33 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          # We use a dynamic filename based on the matrix name/variant
-          # In Windows, bun automatically adds the .exe extension if the target is windows
+          # Bun automatically adds .exe when target is windows
           bun build zsc.js \
+            --bundle \
             --compile \
             --target=${{ matrix.target }} \
             --outfile dist/zsc${{ matrix.variant }}
 
-      # -------- Linux & macOS --------
-      - name: Package tar.gz
-        if: runner.os != 'Windows'
+      # -------- Packaging Logic --------
+      - name: Package Assets
         working-directory: compiler/dist
         shell: bash
         run: |
-          # Use the dynamic filename created above for packaging
-          BIN_NAME="zsc${{ matrix.variant }}"
-          chmod +x $BIN_NAME
-          tar -czf zsc-${{ matrix.name }}.tar.gz $BIN_NAME
-
-      # -------- Windows --------
-      - name: Package zip (Windows)
-        if: runner.os == 'Windows'
-        working-directory: compiler/dist
-        shell: pwsh
-        run: |
-          # Use the dynamic filename created above (with auto .exe extension) for zipping
-          $BIN_NAME = "zsc${{ matrix.variant }}.exe"
-          Compress-Archive $BIN_NAME zsc-${{ matrix.name }}.zip
+          # Determine if the target was windows to find the right file
+          if [[ "${{ matrix.target }}" == *"windows"* ]]; then
+            FILENAME="zsc${{ matrix.variant }}.exe"
+            # Use zip for Windows
+            zip zsc-${{ matrix.name }}.zip "$FILENAME"
+          else
+            FILENAME="zsc${{ matrix.variant }}"
+            chmod +x "$FILENAME"
+            # Use tar.gz for Linux/macOS
+            tar -czf zsc-${{ matrix.name }}.tar.gz "$FILENAME"
+          fi
 
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
         with:
-          files: compiler/dist/zsc-${{ matrix.name }}.*
+          files: |
+            compiler/dist/*.zip
+            compiler/dist/*.tar.gz
