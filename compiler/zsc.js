@@ -19,7 +19,7 @@ import { SemanticAnalyzer } from "./semantic/SemanticAnalyzer.js";
 const VERSION = "0.3.5";
 
 /* =========================
-   CLI ARG PARSING (BUN-SAFE)
+   CLI ARG PARSING (SAFE)
 ========================= */
 
 const argv = Bun.argv.slice(2);
@@ -40,27 +40,18 @@ Usage:
   zsc build <entry.zs>
   zsc run   <entry.zs> [-- args...]
 
-Package commands:
-  zsc add <pkg>
-  zsc install
-  zsc remove <pkg>
-  zsc update
+Bun proxy:
+  zsc bun <args...>      Full Bun CLI (embedded)
 
 Options:
   -h, --help        Show this help
   -v, --version     Show compiler version
 
-Bun proxy:
-  zsc bun <args...>   Run Bun directly (full Bun CLI)
-
-
 Examples:
   zsc build main.zs
   zsc run main.zs -- hello 123
-  zsc add antlr4
   zsc bun --help
   zsc bun install
-  zsc bun run index.js
   zsc bun add antlr4
 `.trim());
 }
@@ -84,39 +75,24 @@ if (command === "-v" || command === "--version") {
 }
 
 /* =========================
-   BUN PACKAGE COMMAND PROXY
-========================= */
-
-const BUN_COMMANDS = new Set([
-  "add",
-  "install",
-  "remove",
-  "update",
-]);
-
-if (BUN_COMMANDS.has(command)) {
-  const result = spawnSync(
-    "bun",
-    [command, ...args],
-    { stdio: "inherit" }
-  );
-  process.exit(result.status ?? 0);
-}
-
-/* =========================
-   BUN FULL PROXY
+   FULL BUN CLI PROXY
 ========================= */
 
 if (command === "bun") {
   const result = spawnSync(
-    "bun",
-    args, // forward EVERYTHING after `bun`
-    { stdio: "inherit" }
+    process.execPath,        // embedded Bun
+    args,
+    {
+      stdio: "inherit",
+      env: {
+        ...process.env,
+        BUN_BE_BUN: "1",     // act exactly like bun
+      },
+    }
   );
+
   process.exit(result.status ?? 0);
 }
-
-
 
 /* =========================
    VALIDATE COMMAND
@@ -223,7 +199,7 @@ try {
     );
 
     const result = spawnSync(
-      "bun",
+      process.execPath,      // embedded Bun again
       [entryJs, ...runArgs],
       { stdio: "inherit" }
     );
