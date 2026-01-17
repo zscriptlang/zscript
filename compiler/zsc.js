@@ -200,7 +200,7 @@ try {
 
     const result = spawnSync(
       process.execPath,      // embedded Bun again
-      [entryJs, ...runArgs],
+      ["bun",entryJs, ...runArgs],
       { stdio: "inherit" }
     );
 
@@ -210,4 +210,5 @@ try {
   console.error(err.message);
   process.exit(1);
 }
+
 
