@@ -25,6 +25,15 @@ statement
     | whileStatement
     | returnStatement
     | expressionStatement
+	| queueStmt
+    | jsBlock
+    | unlessStmt
+    | repeatStmt
+    | foreverStmt
+    | failStmt
+    | breakStmt
+    | continueStmt
+
     ;
 
 /* =======================
@@ -130,6 +139,41 @@ returnStatement
 expressionStatement
     : expression SemiColon
     ;
+	
+	
+	
+queueStmt
+  : QUEUE statement
+  ;
+
+jsBlock
+  : JS block
+  ;
+
+unlessStmt
+  : UNLESS '(' expression ')' statement
+  ;
+
+repeatStmt
+  : REPEAT expression statement
+  ;
+
+foreverStmt
+  : FOREVER statement
+  ;
+
+failStmt
+  : FAIL expression ';'
+  ;
+	
+breakStmt
+  : BREAK ';'
+  ;
+	
+continueStmt
+  : CONTINUE ';'
+  ;
+	
 
 /* =======================
    EXPRESSIONS
@@ -232,6 +276,15 @@ STRUCT:'struct';
 ENUM:'enum';
 INTERFACE:'interface';
 AS:'as';
+QUEUE   : 'queue';
+JS      : 'js';
+UNLESS  : 'unless';
+REPEAT  : 'repeat';
+FOREVER : 'forever';
+FAIL    : 'fail';
+BREAK : 'break';
+CONTINUE : 'continue';
+
 
 /* =======================
    SYMBOLS

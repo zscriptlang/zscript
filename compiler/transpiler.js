@@ -38,10 +38,23 @@ export default class ZTranspiler extends ZScriptVisitor {
       .map(l => "  " + l)
       .join("\n");
 
-    const defers = this.deferredStacks.pop().reverse();
-    if (defers.length) {
-      code += "\n\n  // Defer cleanup\n  " + defers.join("\n  ");
-    }
+    const stack = this.deferredStacks.pop();
+
+// Separate queue and defer
+const queues = stack.filter(x => x && x.__queue).map(x => x.code);
+const defers = stack.filter(x => !x || !x.__queue).reverse();
+
+if (queues.length || defers.length) {
+  code += "\n\n  // Defer cleanup\n";
+  if (queues.length) {
+    code += "  " + queues.join("\n  ");
+    if (defers.length) code += "\n  ";
+  }
+  if (defers.length) {
+    code += "  " + defers.join("\n  ");
+  }
+}
+
 
     code += "\n}";
     return code;
@@ -213,6 +226,50 @@ export default class ZTranspiler extends ZScriptVisitor {
       .push(this.visit(ctx.statement()));
     return null;
   }
+  
+  visitQueueStmt(ctx) {
+  // Tag queue entries so we can separate later
+  const stmt = this.visit(ctx.statement());
+  this.deferredStacks[this.deferredStacks.length - 1]
+    .push({ __queue: true, code: stmt });
+  return null;
+}
+
+
+  visitJsBlock(ctx) {
+  // block text includes { ... }
+  const raw = ctx.block().getText();
+  // remove outer braces ONLY
+  return raw.slice(1, -1);
+}
+
+
+  visitUnlessStmt(ctx) {
+  return `while (!(${this.visit(ctx.expression())})) ${this.visit(ctx.statement())}`;
+}
+
+visitRepeatStmt(ctx) {
+  const count = this.visit(ctx.expression());
+  const stmt = this.visit(ctx.statement());
+  return `for (let __i = 0; __i < ${count}; __i++) ${stmt}`;
+}
+
+visitForeverStmt(ctx) {
+  return `while (true) ${this.visit(ctx.statement())}`;
+}
+
+visitFailStmt(ctx) {
+  return `throw ${this.visit(ctx.expression())};`;
+}
+
+visitBreakStmt(ctx) {
+  return "break;";
+}
+
+visitContinueStmt(ctx) {
+  return "continue;";
+}
+
 
   visitIfStatement(ctx) {
     let code = `if (${this.visit(ctx.expression())}) ${this.visit(ctx.statement(0))}`;

@@ -150,6 +150,54 @@ export default class ZScriptVisitor extends antlr4.tree.ParseTreeVisitor {
 	}
 
 
+	// Visit a parse tree produced by ZScriptParser#queueStmt.
+	visitQueueStmt(ctx) {
+	  return this.visitChildren(ctx);
+	}
+
+
+	// Visit a parse tree produced by ZScriptParser#jsBlock.
+	visitJsBlock(ctx) {
+	  return this.visitChildren(ctx);
+	}
+
+
+	// Visit a parse tree produced by ZScriptParser#unlessStmt.
+	visitUnlessStmt(ctx) {
+	  return this.visitChildren(ctx);
+	}
+
+
+	// Visit a parse tree produced by ZScriptParser#repeatStmt.
+	visitRepeatStmt(ctx) {
+	  return this.visitChildren(ctx);
+	}
+
+
+	// Visit a parse tree produced by ZScriptParser#foreverStmt.
+	visitForeverStmt(ctx) {
+	  return this.visitChildren(ctx);
+	}
+
+
+	// Visit a parse tree produced by ZScriptParser#failStmt.
+	visitFailStmt(ctx) {
+	  return this.visitChildren(ctx);
+	}
+
+
+	// Visit a parse tree produced by ZScriptParser#breakStmt.
+	visitBreakStmt(ctx) {
+	  return this.visitChildren(ctx);
+	}
+
+
+	// Visit a parse tree produced by ZScriptParser#continueStmt.
+	visitContinueStmt(ctx) {
+	  return this.visitChildren(ctx);
+	}
+
+
 	// Visit a parse tree produced by ZScriptParser#UnaryOp.
 	visitUnaryOp(ctx) {
 	  return this.visitChildren(ctx);
