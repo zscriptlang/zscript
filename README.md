@@ -32,7 +32,9 @@ Contributions, feedback, and real-world testing are highly appreciated.
 
 ## Repository Structure
 compiler/ - ZScript compiler (zsc)
+<br>
 grammar/ - ANTLR grammar and generated files
+<br>
 examples/ - Example ZScript programs
 
 ---
