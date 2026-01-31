@@ -1,7 +1,8 @@
 export class Scope {
   constructor(parent = null) {
     this.parent = parent;
-    this.symbols = new Map(); // name -> symbol info
+    this.symbols = new Map(); // name -> symbol info (for values/variables/functions)
+    this.types = new Map();   // name -> Type object
   }
 
   define(name, info) {
@@ -11,11 +12,26 @@ export class Scope {
     this.symbols.set(name, info);
   }
 
+  defineType(name, type) {
+    if (this.types.has(name)) {
+      throw new Error(`Duplicate type '${name}'`);
+    }
+    this.types.set(name, type);
+  }
+
   resolve(name) {
     if (this.symbols.has(name)) {
       return this.symbols.get(name);
     }
     if (this.parent) return this.parent.resolve(name);
+    return null;
+  }
+
+  resolveType(name) {
+    if (this.types.has(name)) {
+      return this.types.get(name);
+    }
+    if (this.parent) return this.parent.resolveType(name);
     return null;
   }
 }

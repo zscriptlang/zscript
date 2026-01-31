@@ -11,6 +11,7 @@ import ZTranspiler from "./transpiler.js";
 
 import { ProjectScanner } from "./crawler.js";
 import { SemanticAnalyzer } from "./semantic/SemanticAnalyzer.js";
+import { Scope } from "./semantic/Scope.js";
 
 /* =========================
    METADATA
@@ -142,12 +143,36 @@ function compileProject(outDir) {
   const scanner = new ProjectScanner();
   scanner.scan(entryAbs);
 
-  const semanticTree = parse(entryAbs);
-  const semantic = new SemanticAnalyzer(scanner.modules, entryAbs);
-  semantic.visit(semanticTree);
-
+  // 1. Initialize analyzers for all modules
+  const analyzers = new Map();
   for (const file of scanner.modules.keys()) {
-    const tree = parse(file);
+    const tree = scanner.modules.get(file).tree;
+    const analyzer = new SemanticAnalyzer(scanner.modules, file, analyzers);
+    analyzers.set(file, { analyzer, tree });
+
+    // Setup initial scope and builtins
+    analyzer.currentScope = new Scope(null);
+    analyzer.injectBuiltins();
+  }
+
+  // 2. Collect declarations for all modules
+  for (const [file, { analyzer, tree }] of analyzers) {
+    analyzer.collectDeclarations(tree);
+  }
+
+  // 3. Inject imports for all modules (can now find declarations)
+  for (const [file, { analyzer, tree }] of analyzers) {
+    analyzer.injectImports(file);
+  }
+
+  // 4. Full semantic analysis for all modules
+  for (const [file, { analyzer, tree }] of analyzers) {
+    analyzer.visit(tree);
+  }
+
+  // 5. Transpilation
+  for (const file of scanner.modules.keys()) {
+    const tree = scanner.modules.get(file).tree;
     const transpiler = new ZTranspiler();
     const output = transpiler.visit(tree);
 
@@ -200,7 +225,7 @@ try {
 
     const result = spawnSync(
       process.execPath,      // embedded Bun again
-      ["bun",entryJs, ...runArgs],
+      [entryJs, ...runArgs],
       { stdio: "inherit" }
     );
 
@@ -210,6 +235,3 @@ try {
   console.error(err.message);
   process.exit(1);
 }
-
-
-

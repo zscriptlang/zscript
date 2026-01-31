@@ -64,6 +64,14 @@ if (queues.length || defers.length) {
      DECLARATIONS
   ===================== */
 
+  visitTypeAlias(ctx) {
+    return "";
+  }
+
+  visitInterfaceDecl(ctx) {
+    return "";
+  }
+
   visitVarDecl(ctx) {
     // IMPORTANT: class fields produce NO JS
     if (this.inClass) return "";
@@ -156,6 +164,28 @@ if (queues.length || defers.length) {
     return `new ${target}(${args})`;
   }
 
+  visitPipeExpr(ctx) {
+    return `${this.visit(ctx.expression(1))}(${this.visit(ctx.expression(0))})`;
+  }
+
+  visitMatchExpr(ctx) {
+    const target = this.visit(ctx.expression());
+    const arms = ctx.matchArm().map(arm => {
+      const isDefault = !!arm.DEFAULT();
+      const cond = isDefault ? "default" : `case ${this.visit(arm.expression(0))}`;
+      const body = arm.block()
+        ? `(() => ${this.visit(arm.block())})()`
+        : this.visit(arm.expression(isDefault ? 0 : 1));
+      return `${cond}: return ${body};`;
+    });
+
+    return `((__val) => {
+      switch (__val) {
+        ${arms.join("\n        ")}
+      }
+    })(${target})`;
+  }
+
   visitBinaryOp(ctx) {
     return `${this.visit(ctx.expression(0))} ${ctx.getChild(1).getText()} ${this.visit(ctx.expression(1))}`;
   }
@@ -188,7 +218,7 @@ if (queues.length || defers.length) {
     const args = ctx.arrayLiteral().arguments();
     return `[${args ? this.visit(args) : ""}]`;
   }
-  
+
   visitArrayAccess(ctx) {
   const base = this.visit(ctx.expression(0));
   const index = this.visit(ctx.expression(1));
@@ -226,7 +256,7 @@ if (queues.length || defers.length) {
       .push(this.visit(ctx.statement()));
     return null;
   }
-  
+
   visitQueueStmt(ctx) {
   // Tag queue entries so we can separate later
   const stmt = this.visit(ctx.statement());
