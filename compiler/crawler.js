@@ -23,14 +23,14 @@ class TypeCollector extends ZScriptVisitor {
 
     for (const field of ctx.structField()) {
       const fieldName = field.Identifier().getText();
-      const fieldType = field.type().getText();
-      fields[fieldName] = fieldType;
+      fields[fieldName] = field.type(); // Store the type context
     }
 
     this.exports.set(name, {
       kind: "struct",
       name,
-      fields
+      fields,
+      ctx
     });
 
     return null;
@@ -46,7 +46,8 @@ class TypeCollector extends ZScriptVisitor {
     this.exports.set(name, {
       kind: "enum",
       name,
-      members
+      members,
+      ctx
     });
 
     return null;
@@ -62,18 +63,19 @@ class TypeCollector extends ZScriptVisitor {
       for (const p of ctx.formalParameterList().parameter()) {
         params.push({
           name: p.Identifier().getText(),
-          type: p.type()?.getText() ?? "any"
+          typeNode: p.type()
         });
       }
     }
 
-    const returnType = ctx.type()?.getText() ?? "void";
+    const returnTypeNode = ctx.type();
 
     this.exports.set(name, {
       kind: "function",
       name,
       params,
-      returnType
+      returnTypeNode,
+      ctx
     });
 
     return null;
@@ -85,6 +87,7 @@ class TypeCollector extends ZScriptVisitor {
     const name = ctx.Identifier(0).getText();
     const methods = {};
     const fields = {};
+    const baseClassName = ctx.EXTENDS() ? ctx.Identifier(1).getText() : null;
 
     for (const el of ctx.classElement()) {
       // Method
@@ -96,35 +99,58 @@ class TypeCollector extends ZScriptVisitor {
           for (const p of el.formalParameterList().parameter()) {
             params.push({
               name: p.Identifier().getText(),
-              type: p.type()?.getText() ?? "any"
+              typeNode: p.type()
             });
           }
         }
 
-        const returnType = el.type()?.getText() ?? "void";
+        const returnTypeNode = el.type();
 
         methods[methodName] = {
           params,
-          returnType
+          returnTypeNode,
+          ctx: el
         };
       }
 
       // Field
       if (el.varDecl) {
         const fieldName = el.varDecl().Identifier().getText();
-        const fieldType = el.varDecl().type()?.getText() ?? "any";
-        fields[fieldName] = fieldType;
+        fields[fieldName] = el.varDecl().type(); // type node
       }
     }
 
     this.exports.set(name, {
       kind: "class",
       name,
+      baseClassName,
       methods,
-      fields
+      fields,
+      ctx
     });
 
     return null;
+  }
+
+  /* ---------- INTERFACE ---------- */
+  visitInterfaceDecl(ctx) {
+      const name = ctx.Identifier().getText();
+      const fields = {};
+      const methods = {}; // Actually grammar doesn't distinguish methods and fields in interface yet?
+      // interfaceField : Identifier COLON type SemiColon ;
+
+      for (const f of ctx.interfaceField()) {
+          fields[f.Identifier().getText()] = f.type();
+      }
+
+      this.exports.set(name, {
+          kind: "interface",
+          name,
+          fields,
+          methods,
+          ctx
+      });
+      return null;
   }
 
   /* ---------- EXPORT ---------- */
@@ -140,7 +166,7 @@ class TypeCollector extends ZScriptVisitor {
 
 export class ProjectScanner {
   constructor() {
-    this.modules = new Map(); // absPath -> { exports, imports }
+    this.modules = new Map(); // absPath -> { exports, imports, tree }
   }
 
   scan(entryFile) {
@@ -169,13 +195,17 @@ export class ProjectScanner {
         importPath.endsWith(".zs") ? importPath : importPath + ".zs"
       );
 
-      imports.push(resolved);
+      imports.push({
+          path: resolved,
+          ctx: imp
+      });
       this.scan(resolved);
     }
 
     this.modules.set(absPath, {
       exports: collector.exports,
-      imports
+      imports,
+      tree
     });
   }
 }
