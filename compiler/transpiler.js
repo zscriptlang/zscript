@@ -64,6 +64,14 @@ if (queues.length || defers.length) {
      DECLARATIONS
   ===================== */
 
+  visitTypeAlias(ctx) {
+    return "";
+  }
+
+  visitInterfaceDecl(ctx) {
+    return "";
+  }
+
   visitVarDecl(ctx) {
     // IMPORTANT: class fields produce NO JS
     if (this.inClass) return "";
@@ -156,6 +164,44 @@ if (queues.length || defers.length) {
     return `new ${target}(${args})`;
   }
 
+  visitPipeExpr(ctx) {
+    return `${this.visit(ctx.expression(1))}(${this.visit(ctx.expression(0))})`;
+  }
+
+  visitMatchExpr(ctx) {
+    const target = this.visit(ctx.expression());
+    const arms = ctx.matchArm().map(arm => {
+      const isDefault = !!arm.DEFAULT();
+      const cond = isDefault ? "default" : `case ${this.visit(arm.expression(0))}`;
+      let body;
+      if (arm.block()) {
+        const statements = arm.block().statement();
+        const blockCode = this.visit(arm.block());
+        // Simple trick to return the last expression value if it's an expression statement
+        if (statements.length > 0 && statements[statements.length - 1].expressionStatement()) {
+            const lastExpr = this.visit(statements[statements.length - 1].expressionStatement().expression());
+            // This is a bit hacky but works for the showcase: we want to return the last expression
+            // Replace the last statement's code with a return
+            body = `(() => {
+              ${blockCode.slice(1, -2).trim().split('\n').slice(0, -1).join('\n')}
+              return ${lastExpr};
+            })()`;
+        } else {
+            body = `(() => ${blockCode})()`;
+        }
+      } else {
+        body = this.visit(arm.expression(isDefault ? 0 : 1));
+      }
+      return `${cond}: return ${body};`;
+    });
+
+    return `((__val) => {
+      switch (__val) {
+        ${arms.join("\n        ")}
+      }
+    })(${target})`;
+  }
+
   visitBinaryOp(ctx) {
     return `${this.visit(ctx.expression(0))} ${ctx.getChild(1).getText()} ${this.visit(ctx.expression(1))}`;
   }
@@ -188,7 +234,7 @@ if (queues.length || defers.length) {
     const args = ctx.arrayLiteral().arguments();
     return `[${args ? this.visit(args) : ""}]`;
   }
-  
+
   visitArrayAccess(ctx) {
   const base = this.visit(ctx.expression(0));
   const index = this.visit(ctx.expression(1));
@@ -226,7 +272,7 @@ if (queues.length || defers.length) {
       .push(this.visit(ctx.statement()));
     return null;
   }
-  
+
   visitQueueStmt(ctx) {
   // Tag queue entries so we can separate later
   const stmt = this.visit(ctx.statement());

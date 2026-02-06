@@ -11,6 +11,7 @@ program
 statement
     : block
     | varDecl
+    | typeAlias
     | functionDecl
     | classDecl
     | structDecl
@@ -74,6 +75,10 @@ interfaceDecl
 
 interfaceField
     : Identifier COLON type SemiColon
+    ;
+
+typeAlias
+    : TYPE Identifier Assign type SemiColon
     ;
 
 classDecl
@@ -184,6 +189,8 @@ expression
     | expression OpenBracket expression CloseBracket     # ArrayAccess
     | expression OpenParen arguments? CloseParen         # CallExpression
     | NEW expression OpenParen arguments? CloseParen     # NewExpression
+    | expression Pipe expression                         # PipeExpr
+    | MATCH expression OpenBrace matchArm* CloseBrace    # MatchExpr
     | <assoc=right> expression (Assign | PlusAssign | MinusAssign) expression # AssignmentExpr
     | expression (Multiply | Divide | Modulus) expression # BinaryOp
     | expression (Plus | Minus) expression               # BinaryOp
@@ -196,6 +203,10 @@ expression
     | objectLiteral                                      # ObjectExpr
     | THIS                                               # ThisExpr
     | OpenParen expression CloseParen                    # ParenthesizedExpr
+    ;
+
+matchArm
+    : (expression | DEFAULT) Arrow (expression | block)
     ;
 
 formalParameterList
@@ -276,6 +287,9 @@ STRUCT:'struct';
 ENUM:'enum';
 INTERFACE:'interface';
 AS:'as';
+TYPE : 'type';
+MATCH: 'match';
+DEFAULT: 'default';
 QUEUE   : 'queue';
 JS      : 'js';
 UNLESS  : 'unless';
@@ -317,6 +331,8 @@ NotEquals:'!=';
 AND:'&&';
 OR:'||';
 NOT:'!';
+Pipe: '|>';
+Arrow: '=>';
 
 /* =======================
    LEXER

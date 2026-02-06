@@ -66,6 +66,12 @@ export default class ZScriptVisitor extends antlr4.tree.ParseTreeVisitor {
 	}
 
 
+	// Visit a parse tree produced by ZScriptParser#typeAlias.
+	visitTypeAlias(ctx) {
+	  return this.visitChildren(ctx);
+	}
+
+
 	// Visit a parse tree produced by ZScriptParser#classDecl.
 	visitClassDecl(ctx) {
 	  return this.visitChildren(ctx);
@@ -252,6 +258,12 @@ export default class ZScriptVisitor extends antlr4.tree.ParseTreeVisitor {
 	}
 
 
+	// Visit a parse tree produced by ZScriptParser#PipeExpr.
+	visitPipeExpr(ctx) {
+	  return this.visitChildren(ctx);
+	}
+
+
 	// Visit a parse tree produced by ZScriptParser#LiteralExpr.
 	visitLiteralExpr(ctx) {
 	  return this.visitChildren(ctx);
@@ -276,6 +288,12 @@ export default class ZScriptVisitor extends antlr4.tree.ParseTreeVisitor {
 	}
 
 
+	// Visit a parse tree produced by ZScriptParser#MatchExpr.
+	visitMatchExpr(ctx) {
+	  return this.visitChildren(ctx);
+	}
+
+
 	// Visit a parse tree produced by ZScriptParser#ThisExpr.
 	visitThisExpr(ctx) {
 	  return this.visitChildren(ctx);
@@ -284,6 +302,12 @@ export default class ZScriptVisitor extends antlr4.tree.ParseTreeVisitor {
 
 	// Visit a parse tree produced by ZScriptParser#BinaryOp.
 	visitBinaryOp(ctx) {
+	  return this.visitChildren(ctx);
+	}
+
+
+	// Visit a parse tree produced by ZScriptParser#matchArm.
+	visitMatchArm(ctx) {
 	  return this.visitChildren(ctx);
 	}
 
