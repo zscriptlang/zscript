@@ -19,7 +19,7 @@ ZScript is still evolving, but it is already usable and stable for experimentati
 
 ## Project Status
 
-- Current version: **v0.4.0**
+- Current version: **v0.4.1**
 - Stage: Active development
 - Stability: Stable compiler, evolving language
 
@@ -82,6 +82,11 @@ This allows ZScript projects to use the full JavaScript ecosystem naturally.
 ---
 
 ## Language Features
+
+### New Type System
+
+From v0.4.1 ZScript has added robust and powerful Type Checking System.
+And it has been tested on Jules Also by the test scripts in example folder.
 
 ### Deferred execution
 
