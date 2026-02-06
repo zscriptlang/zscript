@@ -17,7 +17,7 @@ import { Scope } from "./semantic/Scope.js";
    METADATA
 ========================= */
 
-const VERSION = "0.4.0";
+const VERSION = "0.4.1";
 
 /* =========================
    CLI ARG PARSING (SAFE)
