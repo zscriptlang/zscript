@@ -5,6 +5,7 @@ It focuses on structured control flow, explicit execution ordering, and compile-
 
 This repository contains the **official ZScript compiler (`zsc`)**, grammar, and tooling.
 
+---
 For Doing Tests i have used Jules because i dont have any servers of linux etc.
 We need more users and developers to support ZScript.
 Also ZScript is Fully Open that means if you have Desing and porpsal for language Syntax or Features etc you can directly make a isuue and I will accept it if it is nice.
