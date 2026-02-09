@@ -1,4 +1,4 @@
-// Generated from ZScript.g4 by ANTLR 4.13.2
+// Generated from grammar/ZScript.g4 by ANTLR 4.13.2
 // jshint ignore: start
 import antlr4 from 'antlr4';
 
@@ -224,18 +224,6 @@ export default class ZScriptVisitor extends antlr4.tree.ParseTreeVisitor {
 
 	// Visit a parse tree produced by ZScriptParser#continueStmt.
 	visitContinueStmt(ctx) {
-	  return this.visitChildren(ctx);
-	}
-
-
-	// Visit a parse tree produced by ZScriptParser#comptimeStmt.
-	visitComptimeStmt(ctx) {
-	  return this.visitChildren(ctx);
-	}
-
-
-	// Visit a parse tree produced by ZScriptParser#comptimeVarDecl.
-	visitComptimeVarDecl(ctx) {
 	  return this.visitChildren(ctx);
 	}
 

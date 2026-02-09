@@ -4,6 +4,7 @@ import antlr4 from "antlr4";
 import ZScriptLexer from "./ZScriptLexer.js";
 import ZScriptParser from "./ZScriptParser.js";
 import ZScriptVisitor from "./ZScriptVisitor.js";
+import { processComptime } from "./comptime.js";
 
 /* =========================
    TYPE COLLECTOR
@@ -167,13 +168,15 @@ class TypeCollector extends ZScriptVisitor {
 export class ProjectScanner {
   constructor() {
     this.modules = new Map(); // absPath -> { exports, imports, tree }
+    this.otherFiles = new Set(); // absPaths of .js files etc
   }
 
-  scan(entryFile) {
+  async scan(entryFile) {
     const absPath = path.resolve(entryFile);
     if (this.modules.has(absPath)) return;
 
-    const source = readFileSync(absPath, "utf-8");
+    let source = readFileSync(absPath, "utf-8");
+    source = await processComptime(source, absPath);
     const chars = new antlr4.InputStream(source);
     const lexer = new ZScriptLexer(chars);
     const tokens = new antlr4.CommonTokenStream(lexer);
@@ -190,6 +193,29 @@ export class ProjectScanner {
       if (!imp) continue;
 
       const importPath = imp.StringLiteral().getText().slice(1, -1);
+
+      // Handle special API imports
+      if (importPath.startsWith("bun::") || importPath.startsWith("node::")) {
+        imports.push({
+          path: importPath,
+          ctx: imp,
+          isAPI: true
+        });
+        continue;
+      }
+
+      // Handle JS files
+      if (importPath.endsWith(".js")) {
+        const resolved = path.resolve(path.dirname(absPath), importPath);
+        this.otherFiles.add(resolved);
+        imports.push({
+          path: resolved,
+          ctx: imp,
+          isJS: true
+        });
+        continue;
+      }
+
       const resolved = path.resolve(
         path.dirname(absPath),
         importPath.endsWith(".zs") ? importPath : importPath + ".zs"
@@ -199,7 +225,7 @@ export class ProjectScanner {
           path: resolved,
           ctx: imp
       });
-      this.scan(resolved);
+      await this.scan(resolved);
     }
 
     this.modules.set(absPath, {

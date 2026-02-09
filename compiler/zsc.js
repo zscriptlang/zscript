@@ -12,12 +12,13 @@ import ZTranspiler from "./transpiler.js";
 import { ProjectScanner } from "./crawler.js";
 import { SemanticAnalyzer } from "./semantic/SemanticAnalyzer.js";
 import { Scope } from "./semantic/Scope.js";
+import { processComptime } from "./comptime.js";
 
 /* =========================
    METADATA
 ========================= */
 
-const VERSION = "0.4.0";
+const VERSION = "0.4.1";
 
 /* =========================
    CLI ARG PARSING (SAFE)
@@ -26,6 +27,9 @@ const VERSION = "0.4.0";
 const argv = Bun.argv.slice(2);
 const command = argv[0];
 const args = argv.slice(1);
+
+// Detect Flags
+const generateHeader = args.some(a => a === "--DHeader=true");
 
 /* =========================
    HELP / VERSION
@@ -38,7 +42,7 @@ function printHelp() {
 -----------------------------------------
 
 Usage:
-  zsc build <entry.zs>
+  zsc build <entry.zs> [--DHeader=true]
   zsc run   <entry.zs> [-- args...]
 
 Bun proxy:
@@ -47,13 +51,11 @@ Bun proxy:
 Options:
   -h, --help        Show this help
   -v, --version     Show compiler version
+  --DHeader=true    Generate .zh header files
 
 Examples:
-  zsc build main.zs
+  zsc build main.zs --DHeader=true
   zsc run main.zs -- hello 123
-  zsc bun --help
-  zsc bun install
-  zsc bun add antlr4
 `.trim());
 }
 
@@ -109,7 +111,7 @@ if (command !== "build" && command !== "run") {
    ARGUMENT PARSING
 ========================= */
 
-const entryFile = args[0];
+const entryFile = args.find(a => !a.startsWith("-"));
 if (!entryFile) {
   console.error("error: no entry file specified");
   process.exit(1);
@@ -126,29 +128,113 @@ const projectRoot = path.dirname(entryAbs);
    PARSE HELPER
 ========================= */
 
-function parse(file) {
-  const src = readFileSync(file, "utf-8");
+async function parse(file) {
+  let src = readFileSync(file, "utf-8");
+  src = await processComptime(src, file);
   const input = new antlr4.InputStream(src);
   const lexer = new ZScriptLexer(input);
   const tokens = new antlr4.CommonTokenStream(lexer);
   const parser = new ZScriptParser(tokens);
-  return parser.program();
+  return { tree: parser.program(), tokens, source: src };
+}
+
+/* =========================
+   HEADER GENERATOR
+========================= */
+
+function generateZH(file, analyzer, tokens) {
+    const exports = [];
+    const tree = analyzer.modules.get(file).tree;
+
+    for (const stmt of tree.statement()) {
+        let decl = stmt.getChild(0);
+        let isExported = false;
+        if (decl.constructor.name === "ExportStmtContext") {
+            decl = decl.getChild(1);
+            isExported = true;
+        }
+
+        const modifier = analyzer.getModifier(decl);
+        if (modifier === "public" || isExported) {
+            const summary = extractSummary(decl, tokens);
+            const info = extractDeclInfo(decl, analyzer);
+            if (info) {
+                exports.push({ ...info, summary });
+            }
+        }
+    }
+    return JSON.stringify({ file, exports }, null, 2);
+}
+
+function extractSummary(ctx, tokens) {
+    // Look for DOC_COMMENT before the node
+    const stopIdx = ctx.start.tokenIndex;
+    const hidden = tokens.getHiddenTokensToLeft(stopIdx, antlr4.Lexer.HIDDEN);
+    if (!hidden) return "";
+
+    return hidden
+        .filter(t => t.text.startsWith("///"))
+        .map(t => t.text.replace(/^\/\/\/\s*/, "").trim())
+        .join("\n");
+}
+
+function extractDeclInfo(ctx, analyzer) {
+    let name = null;
+    if (typeof ctx.Identifier === 'function') {
+        const id = ctx.Identifier(0) || ctx.Identifier();
+        if (id && typeof id.getText === 'function') {
+            name = id.getText();
+        }
+    }
+    if (!name) return null;
+
+    if (ctx.constructor.name === "FunctionDeclContext") {
+        return { kind: "function", name, type: analyzer.currentScope.resolve(name)?.type?.toString() };
+    }
+    if (ctx.constructor.name === "VarDeclContext") {
+        return { kind: "variable", name, type: analyzer.currentScope.resolve(name)?.type?.toString() };
+    }
+    if (ctx.constructor.name === "StructDeclContext") {
+        return { kind: "struct", name };
+    }
+    if (ctx.constructor.name === "ClassDeclContext") {
+        return { kind: "class", name };
+    }
+    if (ctx.constructor.name === "EnumDeclContext") {
+        return { kind: "enum", name };
+    }
+    if (ctx.constructor.name === "InterfaceDeclContext") {
+        return { kind: "interface", name };
+    }
+    return null;
 }
 
 /* =========================
    BUILD CORE
 ========================= */
 
-function compileProject(outDir) {
+async function compileProject(outDir) {
   const scanner = new ProjectScanner();
-  scanner.scan(entryAbs);
+  await scanner.scan(entryAbs);
+
+  // Copy other files (JS)
+  for (const file of scanner.otherFiles) {
+    const rel = path.relative(projectRoot, file);
+    const outFile = path.join(outDir, rel);
+    mkdirSync(path.dirname(outFile), { recursive: true });
+    writeFileSync(outFile, readFileSync(file));
+    console.log("Copied " + rel + " -> " + path.relative(process.cwd(), outFile));
+  }
 
   // 1. Initialize analyzers for all modules
   const analyzers = new Map();
   for (const file of scanner.modules.keys()) {
-    const tree = scanner.modules.get(file).tree;
+    const { tree, tokens, source } = await parse(file);
+    // Overwrite tree in scanner module for consistency
+    scanner.modules.get(file).tree = tree;
+
     const analyzer = new SemanticAnalyzer(scanner.modules, file, analyzers);
-    analyzers.set(file, { analyzer, tree });
+    analyzers.set(file, { analyzer, tree, tokens, source });
 
     // Setup initial scope and builtins
     analyzer.currentScope = new Scope(null);
@@ -160,7 +246,7 @@ function compileProject(outDir) {
     analyzer.collectDeclarations(tree);
   }
 
-  // 3. Inject imports for all modules (can now find declarations)
+  // 3. Inject imports for all modules
   for (const [file, { analyzer, tree }] of analyzers) {
     analyzer.injectImports(file);
   }
@@ -170,10 +256,10 @@ function compileProject(outDir) {
     analyzer.visit(tree);
   }
 
-  // 5. Transpilation
+  // 5. Transpilation & Header Generation
   for (const file of scanner.modules.keys()) {
-    const tree = scanner.modules.get(file).tree;
-    const transpiler = new ZTranspiler();
+    const { analyzer, tree, tokens, source } = analyzers.get(file);
+    const transpiler = new ZTranspiler(tokens, source);
     const output = transpiler.visit(tree);
 
     const rel = path.relative(projectRoot, file);
@@ -188,6 +274,13 @@ function compileProject(outDir) {
         " -> " +
         path.relative(process.cwd(), outFile)
     );
+
+    if (generateHeader) {
+        const zhContent = generateZH(file, analyzer, tokens);
+        const zhFile = outFile.replace(/\.js$/, ".zh");
+        writeFileSync(zhFile, zhContent);
+        console.log("Header generated: " + path.relative(process.cwd(), zhFile));
+    }
   }
 }
 
@@ -202,7 +295,7 @@ try {
     console.log("Building project");
     mkdirSync(outDir, { recursive: true });
 
-    compileProject(outDir);
+    await compileProject(outDir);
 
     console.log("Build complete");
     process.exit(0);
@@ -216,7 +309,7 @@ try {
     rmSync(cacheDir, { recursive: true, force: true });
     mkdirSync(cacheDir, { recursive: true });
 
-    compileProject(cacheDir);
+    await compileProject(cacheDir);
 
     const entryJs = path.join(
       cacheDir,
