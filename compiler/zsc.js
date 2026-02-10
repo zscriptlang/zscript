@@ -18,7 +18,7 @@ import { processComptime } from "./comptime.js";
    METADATA
 ========================= */
 
-const VERSION = "0.4.1";
+const VERSION = "0.5.0";
 
 /* =========================
    CLI ARG PARSING (SAFE)
