@@ -1,7 +1,7 @@
 interface HasName { name: String; }
 struct User { name: String; age: Number; }
-class Bot {
-    let name: String;
+class Bot { 
+    let name: String; 
     constructor(n: String) { this.name = n; }
 }
 

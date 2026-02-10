@@ -34,7 +34,8 @@ statement
     | failStmt
     | breakStmt
     | continueStmt
-
+    | comptimeStmt
+    | comptimeVarDecl
     ;
 
 /* =======================
@@ -50,15 +51,15 @@ block
 ======================= */
 
 varDecl
-    : (LET | VAR | CONST) Identifier (COLON type)? (Assign expression)? SemiColon
+    : modifier? (LET | VAR | CONST) Identifier (COLON type)? (Assign expression)? SemiColon
     ;
 
 functionDecl
-    : FN Identifier OpenParen formalParameterList? CloseParen (COLON type)? block
+    : modifier? ASYNC? FN Identifier typeParameters? OpenParen formalParameterList? CloseParen (COLON type)? block
     ;
 
 structDecl
-    : STRUCT Identifier OpenBrace structField* CloseBrace
+    : modifier? STRUCT Identifier typeParameters? OpenBrace structField* CloseBrace
     ;
 
 structField
@@ -66,11 +67,11 @@ structField
     ;
 
 enumDecl
-    : ENUM Identifier OpenBrace Identifier (Comma Identifier)* CloseBrace
+    : modifier? ENUM Identifier OpenBrace Identifier (Comma Identifier)* CloseBrace
     ;
 
 interfaceDecl
-    : INTERFACE Identifier OpenBrace interfaceField* CloseBrace
+    : modifier? INTERFACE Identifier typeParameters? OpenBrace interfaceField* CloseBrace
     ;
 
 interfaceField
@@ -78,16 +79,29 @@ interfaceField
     ;
 
 typeAlias
-    : TYPE Identifier Assign type SemiColon
+    : modifier? TYPE Identifier Assign type SemiColon
     ;
 
 classDecl
-    : CLASS Identifier (EXTENDS Identifier)? OpenBrace classElement* CloseBrace
+    : modifier? CLASS Identifier typeParameters? (EXTENDS Identifier typeArguments?)? OpenBrace classElement* CloseBrace
     ;
 
 classElement
-    : Identifier OpenParen formalParameterList? CloseParen (COLON type)? block   # ClassMethod
-    | varDecl                                                                  # ClassField
+    : modifier? Identifier typeParameters? OpenParen formalParameterList? CloseParen (COLON type)? block   # ClassMethod
+    | modifier? ASYNC? FN Identifier typeParameters? OpenParen formalParameterList? CloseParen (COLON type)? block # ClassMethodWithFn
+    | varDecl                                                                                                      # ClassField
+    ;
+
+modifier
+    : PUBLIC | PRIVATE | PROTECTED
+    ;
+
+typeParameters
+    : LessThan Identifier (Comma Identifier)* MoreThan
+    ;
+
+typeArguments
+    : LessThan type (Comma type)* MoreThan
     ;
 
 /* =======================
@@ -178,7 +192,14 @@ breakStmt
 continueStmt
   : CONTINUE ';'
   ;
-	
+
+comptimeStmt
+  : COMPTIME block
+  ;
+
+comptimeVarDecl
+  : COMPTIME varDecl
+  ;
 
 /* =======================
    EXPRESSIONS
@@ -187,8 +208,10 @@ continueStmt
 expression
     : expression Dot Identifier                          # MemberIndex
     | expression OpenBracket expression CloseBracket     # ArrayAccess
-    | expression OpenParen arguments? CloseParen         # CallExpression
-    | NEW expression OpenParen arguments? CloseParen     # NewExpression
+    | expression COLON COLON typeArguments OpenParen arguments? CloseParen  # GenericCallExpression
+    | expression OpenParen arguments? CloseParen                # CallExpression
+    | NEW expression typeArguments? OpenParen arguments? CloseParen     # NewExpression
+    | AWAIT expression                                   # AwaitExpr
     | expression Pipe expression                         # PipeExpr
     | MATCH expression OpenBrace matchArm* CloseBrace    # MatchExpr
     | <assoc=right> expression (Assign | PlusAssign | MinusAssign) expression # AssignmentExpr
@@ -226,7 +249,7 @@ arguments
 ======================= */
 
 type
-    : Identifier typeSuffix?
+    : Identifier typeArguments? typeSuffix?
     | type OR type
     ;
 
@@ -243,7 +266,7 @@ arrayLiteral
     ;
 
 objectLiteral
-    : OpenBrace property (Comma property)* CloseBrace
+    : OpenBrace (property (Comma property)*)? CloseBrace
     ;
 
 property
@@ -257,12 +280,14 @@ literal
     | BooleanLiteral
     | NullLiteral
     | TemplateString
+    | RegexLiteral
     ;
 
 /* =======================
    KEYWORDS
 ======================= */
 
+RegexLiteral: '/' (~[/\\\r\n] | '\\' .)+ '/' [a-gimuy]*;
 FN:'fn';
 LET:'let';
 VAR:'var';
@@ -290,6 +315,11 @@ AS:'as';
 TYPE : 'type';
 MATCH: 'match';
 DEFAULT: 'default';
+ASYNC: 'async';
+AWAIT: 'await';
+PUBLIC: 'public';
+PRIVATE: 'private';
+PROTECTED: 'protected';
 QUEUE   : 'queue';
 JS      : 'js';
 UNLESS  : 'unless';
@@ -298,6 +328,7 @@ FOREVER : 'forever';
 FAIL    : 'fail';
 BREAK : 'break';
 CONTINUE : 'continue';
+COMPTIME : 'comptime';
 
 
 /* =======================
@@ -350,6 +381,6 @@ TemplateString:'`' (~[`\\] | '\\' .)* '`';
 Identifier:[a-zA-Z_$][a-zA-Z0-9_$]*;
 
 DOC_COMMENT:'///' ~[\r\n]* -> channel(HIDDEN);
-LineComment:'//' ~[\r\n]* -> skip;
-BlockComment:'/*' .*? '*/' -> skip;
-WhiteSpaces:[ \t\r\n]+ -> skip;
+LineComment:'//' ~[\r\n]* -> channel(HIDDEN);
+BlockComment:'/*' .*? '*/' -> channel(HIDDEN);
+WhiteSpaces:[ \t\r\n]+ -> channel(HIDDEN);

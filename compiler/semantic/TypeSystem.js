@@ -56,13 +56,14 @@ export class ArrayType extends Type {
 }
 
 export class FunctionType extends Type {
-  constructor(params, returnType, isVariadic = false) {
+  constructor(params, returnType, isVariadic = false, typeParams = []) {
     super(
-      `fn(${params.map(p => p.type.toString()).join(", ")}) => ${returnType.toString()}`
+      `${typeParams.length ? '<' + typeParams.join(', ') + '>' : ''}fn(${params.map(p => p.type.toString()).join(", ")}) => ${returnType.toString()}`
     );
     this.params = params; // Array of { name, type }
     this.returnType = returnType;
     this.isVariadic = isVariadic;
+    this.typeParams = typeParams;
   }
   isAssignableTo(other) {
     if (other instanceof AnyType) return true;
@@ -85,6 +86,8 @@ export class NominalType extends Type {
   constructor(name, kind) {
     super(name);
     this.kind = kind; // 'struct', 'class', 'enum', 'interface'
+    this.typeParams = [];
+    this.typeArgs = [];
   }
   isAssignableTo(other) {
     if (other instanceof AnyType) return true;
@@ -92,9 +95,21 @@ export class NominalType extends Type {
       return other.types.some(t => this.isAssignableTo(t));
     }
     if (other instanceof NominalType && this.name === other.name && this.kind === other.kind) {
+      if (this.typeArgs.length !== other.typeArgs.length) return false;
+      for (let i = 0; i < this.typeArgs.length; i++) {
+          // Type arguments should ideally be invariant for generic nominal types
+          if (this.typeArgs[i].name !== other.typeArgs[i].name) return false;
+      }
       return true;
     }
     return false;
+  }
+  
+  toString() {
+      if (this.typeArgs.length > 0) {
+          return `${this.name}<${this.typeArgs.map(t => t.toString()).join(", ")}>`;
+      }
+      return this.name;
   }
 }
 
@@ -149,17 +164,48 @@ export class InterfaceType extends NominalType {
     }
 }
 
+export class GenericParameterType extends Type {
+    constructor(name) {
+        super(name);
+    }
+    isAssignableTo(other) {
+        if (other instanceof AnyType) return true;
+        if (other instanceof GenericParameterType && this.name === other.name) return true;
+        return false;
+    }
+}
+
+// Built-in Promise type
+export class PromiseType extends NominalType {
+    constructor(wrappedType) {
+        super("Promise", "class");
+        this.typeArgs = [wrappedType];
+    }
+    isAssignableTo(other) {
+        if (other instanceof AnyType) return true;
+        if (other instanceof PromiseType) {
+            return this.typeArgs[0].isAssignableTo(other.typeArgs[0]);
+        }
+        return false;
+    }
+}
+
 // Any class or struct should be assignable to an interface if it matches the structure
-// Let's modify ClassType and StructType to check for interface compatibility
 const originalClassIsAssignableTo = ClassType.prototype.isAssignableTo;
 ClassType.prototype.isAssignableTo = function(other) {
     if (originalClassIsAssignableTo.call(this, other)) return true;
     if (other instanceof InterfaceType) {
         for (const [name, type] of Object.entries(other.fields)) {
-            if (!this.fields[name] || !this.fields[name].isAssignableTo(type)) return false;
+            const field = this.fields[name];
+            if (!field) return false;
+            const fieldType = field.type || field;
+            if (!fieldType.isAssignableTo(type)) return false;
         }
         for (const [name, type] of Object.entries(other.methods)) {
-            if (!this.methods[name] || !this.methods[name].isAssignableTo(type)) return false;
+            const method = this.methods[name];
+            if (!method) return false;
+            const methodType = method.type || method;
+            if (!methodType.isAssignableTo(type)) return false;
         }
         return true;
     }
