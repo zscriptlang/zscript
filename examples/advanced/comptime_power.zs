@@ -16,7 +16,10 @@ comptime {
 // 3. Compile-time file system access
 comptime {
     let fs = require("node:fs");
-    let files = fs.readdirSync("examples/showcase");
+    let path = require("node:path");
+    // Use ZScript.path (absolute path of this file) to find showcase dir relative to this script
+    let showcaseDir = path.join(path.dirname(ZScript.path), "..", "showcase");
+    let files = fs.readdirSync(showcaseDir);
 
     ZScript.emit("struct ShowcaseFiles {\n");
     for (let i = 0; i < files.length; i += 1) {
