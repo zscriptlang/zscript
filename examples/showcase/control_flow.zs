@@ -1,7 +1,7 @@
 fn main() {
     defer console.log("Final cleanup (defer LIFO 2)");
     defer console.log("Cleaning up (defer LIFO 1)");
-
+    
     queue console.log("First step (queue FIFO 1)");
     queue console.log("Second step (queue FIFO 2)");
 

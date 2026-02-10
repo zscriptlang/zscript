@@ -34,4 +34,13 @@ export class Scope {
     if (this.parent) return this.parent.resolveType(name);
     return null;
   }
+
+  // To resolve the Type object itself from the symbol table if it's there
+  resolveTypeType(name) {
+      const sym = this.resolve(name);
+      if (sym && (sym.kind === "type" || sym.kind === "struct" || sym.kind === "class" || sym.kind === "interface")) {
+          return sym.type;
+      }
+      return null;
+  }
 }

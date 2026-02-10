@@ -19,13 +19,13 @@ fn main() {
     let p: Product = new Product({ id: 2, name: "Widget" });
 
     printUser(u); // Should pass
-
+    
     // printUser(p); // Should FAIL if nominal
-
+    
     let myId: ID = 10;
     let otherId: Number = myId; // Type aliases are structural (compatible with base type)
     let backAgain: ID = otherId;
-
+    
     console.log("IDs:", myId, otherId, backAgain);
 }
 
