@@ -206,6 +206,31 @@ if (queues.length || defers.length) {
     return `${this.visit(ctx.expression(1))}(${this.visit(ctx.expression(0))})`;
   }
 
+  visitTernaryExpr(ctx) {
+    return `${this.visit(ctx.expression(0))} ? ${this.visit(ctx.expression(1))} : ${this.visit(ctx.expression(2))}`;
+  }
+
+  visitNullishCoalescingExpr(ctx) {
+    return `${this.visit(ctx.expression(0))} ?? ${this.visit(ctx.expression(1))}`;
+  }
+
+  visitOptionalChainingExpr(ctx) {
+    return `${this.visit(ctx.expression())}?.${ctx.Identifier().getText()}`;
+  }
+
+  visitLambdaExpr(ctx) {
+    const params = ctx.formalParameterList && ctx.formalParameterList()
+      ? `(${this.visit(ctx.formalParameterList())})`
+      : ctx.Identifier() ? ctx.Identifier().getText() : "()";
+    
+    const body = ctx.block() ? this.visit(ctx.block()) : this.visit(ctx.expression());
+    return `${params} => ${body}`;
+  }
+
+  visitTypeofExpr(ctx) {
+    return `typeof ${this.visit(ctx.expression())}`;
+  }
+
   visitMatchExpr(ctx) {
     const target = this.visit(ctx.expression());
     const arms = ctx.matchArm().map(arm => {
@@ -378,12 +403,53 @@ visitContinueStmt(ctx) {
   }
 
   visitForStatement(ctx) {
-    const init = ctx.getChild(2) instanceof antlr4.tree.TerminalNode
-      ? ""
-      : this.visit(ctx.getChild(2));
-    const cond = ctx.expression(0) ? this.visit(ctx.expression(0)) : "";
-    const post = ctx.expression(1) ? this.visit(ctx.expression(1)) : "";
-    return `for (${init} ${cond}; ${post}) ${this.visit(ctx.statement())}`;
+    if (ctx.IN() || ctx.OF()) {
+      const op = ctx.IN() ? "in" : "of";
+      const id = ctx.Identifier().getText();
+      const expr = this.visit(ctx.expression(ctx.expression().length - 1));
+      let decl = "";
+      if (ctx.LET()) decl = "let ";
+      else if (ctx.VAR()) decl = "var ";
+      else if (ctx.CONST()) decl = "const ";
+      return `for (${decl}${id} ${op} ${expr}) ${this.visit(ctx.statement())}`;
+    }
+
+    let init = "";
+    if (ctx.varDecl()) {
+        init = this.visit(ctx.varDecl());
+        if (init.endsWith(";")) init = init.slice(0, -1);
+    } else if (ctx.expressionStatement()) {
+        init = this.visit(ctx.expressionStatement().expression());
+    }
+
+    const semiColons = ctx.SemiColon ? ctx.SemiColon() : [];
+    const expressions = ctx.expression ? ctx.expression() : [];
+    let cond = "";
+    let post = "";
+
+    if (ctx.varDecl() || ctx.expressionStatement()) {
+        // Init consumed the first implicit semicolon. Only one SemiColon terminal remains in grammar.
+        if (semiColons.length >= 1) {
+            const s1 = semiColons[0].symbol.tokenIndex;
+            for (const ex of expressions) {
+                if (ex.start.tokenIndex < s1) cond = this.visit(ex);
+                else post = this.visit(ex);
+            }
+        }
+    } else {
+        // No init or just a SemiColon init. Grammar has two SemiColon terminals.
+        if (semiColons.length >= 2) {
+            const s1 = semiColons[0].symbol.tokenIndex;
+            const s2 = semiColons[1].symbol.tokenIndex;
+            for (const ex of expressions) {
+                const idx = ex.start.tokenIndex;
+                if (idx > s1 && idx < s2) cond = this.visit(ex);
+                else if (idx > s2) post = this.visit(ex);
+            }
+        }
+    }
+
+    return `for (${init}; ${cond}; ${post}) ${this.visit(ctx.statement())}`;
   }
 
   visitTryStatement(ctx) {

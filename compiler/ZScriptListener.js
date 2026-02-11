@@ -1,4 +1,4 @@
-// Generated from ZScript.g4 by ANTLR 4.13.2
+// Generated from grammar/ZScript.g4 by ANTLR 4.13.2
 // jshint ignore: start
 import antlr4 from 'antlr4';
 
@@ -95,6 +95,15 @@ export default class ZScriptListener extends antlr4.tree.ParseTreeListener {
 	}
 
 
+	// Enter a parse tree produced by ZScriptParser#typeAlias.
+	enterTypeAlias(ctx) {
+	}
+
+	// Exit a parse tree produced by ZScriptParser#typeAlias.
+	exitTypeAlias(ctx) {
+	}
+
+
 	// Enter a parse tree produced by ZScriptParser#classDecl.
 	enterClassDecl(ctx) {
 	}
@@ -113,12 +122,48 @@ export default class ZScriptListener extends antlr4.tree.ParseTreeListener {
 	}
 
 
+	// Enter a parse tree produced by ZScriptParser#ClassMethodWithFn.
+	enterClassMethodWithFn(ctx) {
+	}
+
+	// Exit a parse tree produced by ZScriptParser#ClassMethodWithFn.
+	exitClassMethodWithFn(ctx) {
+	}
+
+
 	// Enter a parse tree produced by ZScriptParser#ClassField.
 	enterClassField(ctx) {
 	}
 
 	// Exit a parse tree produced by ZScriptParser#ClassField.
 	exitClassField(ctx) {
+	}
+
+
+	// Enter a parse tree produced by ZScriptParser#modifier.
+	enterModifier(ctx) {
+	}
+
+	// Exit a parse tree produced by ZScriptParser#modifier.
+	exitModifier(ctx) {
+	}
+
+
+	// Enter a parse tree produced by ZScriptParser#typeParameters.
+	enterTypeParameters(ctx) {
+	}
+
+	// Exit a parse tree produced by ZScriptParser#typeParameters.
+	exitTypeParameters(ctx) {
+	}
+
+
+	// Enter a parse tree produced by ZScriptParser#typeArguments.
+	enterTypeArguments(ctx) {
+	}
+
+	// Exit a parse tree produced by ZScriptParser#typeArguments.
+	exitTypeArguments(ctx) {
 	}
 
 
@@ -293,6 +338,33 @@ export default class ZScriptListener extends antlr4.tree.ParseTreeListener {
 	}
 
 
+	// Enter a parse tree produced by ZScriptParser#comptimeStmt.
+	enterComptimeStmt(ctx) {
+	}
+
+	// Exit a parse tree produced by ZScriptParser#comptimeStmt.
+	exitComptimeStmt(ctx) {
+	}
+
+
+	// Enter a parse tree produced by ZScriptParser#comptimeVarDecl.
+	enterComptimeVarDecl(ctx) {
+	}
+
+	// Exit a parse tree produced by ZScriptParser#comptimeVarDecl.
+	exitComptimeVarDecl(ctx) {
+	}
+
+
+	// Enter a parse tree produced by ZScriptParser#OptionalChainingExpr.
+	enterOptionalChainingExpr(ctx) {
+	}
+
+	// Exit a parse tree produced by ZScriptParser#OptionalChainingExpr.
+	exitOptionalChainingExpr(ctx) {
+	}
+
+
 	// Enter a parse tree produced by ZScriptParser#UnaryOp.
 	enterUnaryOp(ctx) {
 	}
@@ -302,12 +374,39 @@ export default class ZScriptListener extends antlr4.tree.ParseTreeListener {
 	}
 
 
+	// Enter a parse tree produced by ZScriptParser#GenericCallExpression.
+	enterGenericCallExpression(ctx) {
+	}
+
+	// Exit a parse tree produced by ZScriptParser#GenericCallExpression.
+	exitGenericCallExpression(ctx) {
+	}
+
+
 	// Enter a parse tree produced by ZScriptParser#NewExpression.
 	enterNewExpression(ctx) {
 	}
 
 	// Exit a parse tree produced by ZScriptParser#NewExpression.
 	exitNewExpression(ctx) {
+	}
+
+
+	// Enter a parse tree produced by ZScriptParser#NullishCoalescingExpr.
+	enterNullishCoalescingExpr(ctx) {
+	}
+
+	// Exit a parse tree produced by ZScriptParser#NullishCoalescingExpr.
+	exitNullishCoalescingExpr(ctx) {
+	}
+
+
+	// Enter a parse tree produced by ZScriptParser#LambdaExpr.
+	enterLambdaExpr(ctx) {
+	}
+
+	// Exit a parse tree produced by ZScriptParser#LambdaExpr.
+	exitLambdaExpr(ctx) {
 	}
 
 
@@ -329,6 +428,15 @@ export default class ZScriptListener extends antlr4.tree.ParseTreeListener {
 	}
 
 
+	// Enter a parse tree produced by ZScriptParser#AwaitExpr.
+	enterAwaitExpr(ctx) {
+	}
+
+	// Exit a parse tree produced by ZScriptParser#AwaitExpr.
+	exitAwaitExpr(ctx) {
+	}
+
+
 	// Enter a parse tree produced by ZScriptParser#ArrayExpr.
 	enterArrayExpr(ctx) {
 	}
@@ -344,6 +452,15 @@ export default class ZScriptListener extends antlr4.tree.ParseTreeListener {
 
 	// Exit a parse tree produced by ZScriptParser#ArrayAccess.
 	exitArrayAccess(ctx) {
+	}
+
+
+	// Enter a parse tree produced by ZScriptParser#TypeofExpr.
+	enterTypeofExpr(ctx) {
+	}
+
+	// Exit a parse tree produced by ZScriptParser#TypeofExpr.
+	exitTypeofExpr(ctx) {
 	}
 
 
@@ -371,6 +488,15 @@ export default class ZScriptListener extends antlr4.tree.ParseTreeListener {
 
 	// Exit a parse tree produced by ZScriptParser#MemberIndex.
 	exitMemberIndex(ctx) {
+	}
+
+
+	// Enter a parse tree produced by ZScriptParser#PipeExpr.
+	enterPipeExpr(ctx) {
+	}
+
+	// Exit a parse tree produced by ZScriptParser#PipeExpr.
+	exitPipeExpr(ctx) {
 	}
 
 
@@ -410,6 +536,15 @@ export default class ZScriptListener extends antlr4.tree.ParseTreeListener {
 	}
 
 
+	// Enter a parse tree produced by ZScriptParser#MatchExpr.
+	enterMatchExpr(ctx) {
+	}
+
+	// Exit a parse tree produced by ZScriptParser#MatchExpr.
+	exitMatchExpr(ctx) {
+	}
+
+
 	// Enter a parse tree produced by ZScriptParser#ThisExpr.
 	enterThisExpr(ctx) {
 	}
@@ -419,12 +554,30 @@ export default class ZScriptListener extends antlr4.tree.ParseTreeListener {
 	}
 
 
+	// Enter a parse tree produced by ZScriptParser#TernaryExpr.
+	enterTernaryExpr(ctx) {
+	}
+
+	// Exit a parse tree produced by ZScriptParser#TernaryExpr.
+	exitTernaryExpr(ctx) {
+	}
+
+
 	// Enter a parse tree produced by ZScriptParser#BinaryOp.
 	enterBinaryOp(ctx) {
 	}
 
 	// Exit a parse tree produced by ZScriptParser#BinaryOp.
 	exitBinaryOp(ctx) {
+	}
+
+
+	// Enter a parse tree produced by ZScriptParser#matchArm.
+	enterMatchArm(ctx) {
+	}
+
+	// Exit a parse tree produced by ZScriptParser#matchArm.
+	exitMatchArm(ctx) {
 	}
 
 

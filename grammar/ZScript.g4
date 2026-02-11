@@ -145,6 +145,7 @@ forStatement
     : FOR OpenParen (varDecl | expressionStatement | SemiColon)
       expression? SemiColon expression?
       CloseParen statement
+    | FOR OpenParen (LET | VAR | CONST)? Identifier (IN | OF) expression CloseParen statement
     ;
 
 whileStatement
@@ -214,12 +215,18 @@ expression
     | AWAIT expression                                   # AwaitExpr
     | expression Pipe expression                         # PipeExpr
     | MATCH expression OpenBrace matchArm* CloseBrace    # MatchExpr
+    | expression Question expression COLON expression    # TernaryExpr
+    | expression Question Question expression             # NullishCoalescingExpr
+    | expression Question Dot Identifier                 # OptionalChainingExpr
+    | Identifier Arrow (expression | block)              # LambdaExpr
+    | OpenParen formalParameterList? CloseParen Arrow (expression | block) # LambdaExpr
     | <assoc=right> expression (Assign | PlusAssign | MinusAssign) expression # AssignmentExpr
     | expression (Multiply | Divide | Modulus) expression # BinaryOp
     | expression (Plus | Minus) expression               # BinaryOp
     | expression (LessThan | MoreThan | LessEqual | MoreEqual | Equals_ | NotEquals) expression # CompareOp
     | expression (AND | OR) expression                   # LogicalOp
     | NOT expression                                     # UnaryOp
+    | TYPEOF expression                                  # TypeofExpr
     | Identifier                                         # IdentifierExpr
     | literal                                            # LiteralExpr
     | arrayLiteral                                       # ArrayExpr
@@ -250,7 +257,8 @@ arguments
 
 type
     : Identifier typeArguments? typeSuffix?
-    | type OR type
+    | NullLiteral
+    | type UnionSep type
     ;
 
 typeSuffix
@@ -317,6 +325,7 @@ MATCH: 'match';
 DEFAULT: 'default';
 ASYNC: 'async';
 AWAIT: 'await';
+TYPEOF: 'typeof';
 PUBLIC: 'public';
 PRIVATE: 'private';
 PROTECTED: 'protected';
@@ -328,6 +337,8 @@ FOREVER : 'forever';
 FAIL    : 'fail';
 BREAK : 'break';
 CONTINUE : 'continue';
+IN : 'in';
+OF : 'of';
 COMPTIME : 'comptime';
 
 
@@ -364,6 +375,8 @@ OR:'||';
 NOT:'!';
 Pipe: '|>';
 Arrow: '=>';
+Question: '?';
+UnionSep: '|';
 
 /* =======================
    LEXER

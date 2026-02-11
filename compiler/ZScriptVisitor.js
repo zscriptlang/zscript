@@ -1,4 +1,4 @@
-// Generated from ZScript.g4 by ANTLR 4.13.2
+// Generated from grammar/ZScript.g4 by ANTLR 4.13.2
 // jshint ignore: start
 import antlr4 from 'antlr4';
 
@@ -240,6 +240,12 @@ export default class ZScriptVisitor extends antlr4.tree.ParseTreeVisitor {
 	}
 
 
+	// Visit a parse tree produced by ZScriptParser#OptionalChainingExpr.
+	visitOptionalChainingExpr(ctx) {
+	  return this.visitChildren(ctx);
+	}
+
+
 	// Visit a parse tree produced by ZScriptParser#UnaryOp.
 	visitUnaryOp(ctx) {
 	  return this.visitChildren(ctx);
@@ -254,6 +260,18 @@ export default class ZScriptVisitor extends antlr4.tree.ParseTreeVisitor {
 
 	// Visit a parse tree produced by ZScriptParser#NewExpression.
 	visitNewExpression(ctx) {
+	  return this.visitChildren(ctx);
+	}
+
+
+	// Visit a parse tree produced by ZScriptParser#NullishCoalescingExpr.
+	visitNullishCoalescingExpr(ctx) {
+	  return this.visitChildren(ctx);
+	}
+
+
+	// Visit a parse tree produced by ZScriptParser#LambdaExpr.
+	visitLambdaExpr(ctx) {
 	  return this.visitChildren(ctx);
 	}
 
@@ -284,6 +302,12 @@ export default class ZScriptVisitor extends antlr4.tree.ParseTreeVisitor {
 
 	// Visit a parse tree produced by ZScriptParser#ArrayAccess.
 	visitArrayAccess(ctx) {
+	  return this.visitChildren(ctx);
+	}
+
+
+	// Visit a parse tree produced by ZScriptParser#TypeofExpr.
+	visitTypeofExpr(ctx) {
 	  return this.visitChildren(ctx);
 	}
 
@@ -344,6 +368,12 @@ export default class ZScriptVisitor extends antlr4.tree.ParseTreeVisitor {
 
 	// Visit a parse tree produced by ZScriptParser#ThisExpr.
 	visitThisExpr(ctx) {
+	  return this.visitChildren(ctx);
+	}
+
+
+	// Visit a parse tree produced by ZScriptParser#TernaryExpr.
+	visitTernaryExpr(ctx) {
 	  return this.visitChildren(ctx);
 	}
 

@@ -217,7 +217,14 @@ StructType.prototype.isAssignableTo = function(other) {
     if (originalStructIsAssignableTo.call(this, other)) return true;
     if (other instanceof InterfaceType) {
         for (const [name, type] of Object.entries(other.fields)) {
-            if (!this.fields[name] || !this.fields[name].isAssignableTo(type)) return false;
+            const field = this.fields[name];
+            if (!field) return false;
+            const fieldType = field.type || field;
+            if (!fieldType.isAssignableTo(type)) return false;
+        }
+        for (const [name, type] of Object.entries(other.methods)) {
+            // Structs don't have methods currently
+            return false;
         }
         return true;
     }

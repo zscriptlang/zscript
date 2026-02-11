@@ -1,4 +1,5 @@
 import ZScriptVisitor from "../ZScriptVisitor.js";
+import ZScriptParser from "../ZScriptParser.js";
 import { Scope } from "./Scope.js";
 import {
   Primitives,
@@ -41,10 +42,10 @@ export class SemanticAnalyzer extends ZScriptVisitor {
 
   resolveType(ctx) {
     if (!ctx) return Primitives.Any;
-    if (ctx.getChildCount() === 3 && ctx.getChild(1).getText() === "|") {
-      return new UnionType([this.resolveType(ctx.type(0)), this.resolveType(ctx.type(1))]);
+    if (ctx.getChildCount() === 3 && (ctx.getChild(1).getText() === "|" || ctx.getChild(1).getText() === "||")) {
+      return new UnionType([this.resolveType(ctx.getChild(0)), this.resolveType(ctx.getChild(2))]);
     }
-    const name = ctx.Identifier().getText();
+    const name = ctx.getText().split('<')[0].split('[')[0].trim();
     let type = this.currentScope.resolveTypeType ? this.currentScope.resolveTypeType(name) : this.currentScope.resolveType(name);
     if (!type) {
       if (name === "Number") type = Primitives.Number;
@@ -76,10 +77,7 @@ export class SemanticAnalyzer extends ZScriptVisitor {
   }
 
   visitProgram(ctx) {
-    this.currentScope = new Scope(null);
-    this.injectBuiltins();
-    this.injectImports(this.entryFile);
-    this.collectDeclarations(ctx);
+    // Rely on setup from zsc.js (collectDeclarations, injectImports already called)
     for (const stmt of ctx.statement()) this.visit(stmt);
   }
 
@@ -97,6 +95,8 @@ export class SemanticAnalyzer extends ZScriptVisitor {
       const modifier = this.getModifier(decl);
       if (decl.constructor.name === "TypeAliasContext") {
           this.currentScope.defineType(decl.Identifier().getText(), Primitives.Any);
+      } else if (decl.constructor.name === "VarDeclContext") {
+          this.currentScope.define(decl.Identifier().getText(), { kind: "variable", type: Primitives.Any, modifier });
       } else if (decl.constructor.name === "FunctionDeclContext") {
           this.currentScope.define(decl.Identifier().getText(), { kind: "function", type: Primitives.Any, modifier });
       } else if (decl.constructor.name === "StructDeclContext") {
@@ -125,17 +125,20 @@ export class SemanticAnalyzer extends ZScriptVisitor {
         if (decl.constructor.name === "ExportStmtContext") decl = decl.getChild(1);
         if (decl.constructor.name === "TypeAliasContext") {
             this.currentScope.types.set(decl.Identifier().getText(), this.resolveType(decl.type()));
+        } else if (decl.constructor.name === "VarDeclContext") {
+            const sym = this.currentScope.resolve(decl.Identifier().getText());
+            if (sym) sym.type = this.resolveType(decl.type()) || Primitives.Any;
         } else if (decl.constructor.name === "FunctionDeclContext") {
             const name = decl.Identifier().getText();
             const typeParams = (decl.typeParameters && decl.typeParameters()) ? decl.typeParameters().Identifier().map(id => id.getText()) : [];
             const prevScope = this.currentScope;
             this.currentScope = new Scope(prevScope);
             for (const tp of typeParams) this.currentScope.defineType(tp, new GenericParameterType(tp));
-            let returnType = this.resolveType(decl.type());
+            let returnType = this.resolveType(decl.type()) || Primitives.Any;
             if (decl.ASYNC && typeof decl.ASYNC === 'function' && decl.ASYNC()) returnType = new PromiseType(returnType);
             const params = [];
             if (decl.formalParameterList()) {
-                for (const p of decl.formalParameterList().parameter()) params.push({ name: p.Identifier().getText(), type: this.resolveType(p.type()) });
+                for (const p of decl.formalParameterList().parameter()) params.push({ name: p.Identifier().getText(), type: this.resolveType(p.type()) || Primitives.Any });
             }
             this.currentScope = prevScope;
             const sym = this.currentScope.resolve(name);
@@ -242,11 +245,23 @@ export class SemanticAnalyzer extends ZScriptVisitor {
 
   visitVarDecl(ctx) {
     const name = ctx.Identifier().getText();
-    const declaredType = this.resolveType(ctx.type());
+    const explicitTypeNode = ctx.type();
+    let declaredType = this.resolveType(explicitTypeNode);
     const valueType = ctx.expression() ? this.visit(ctx.expression()) : Primitives.Any;
+    
+    // Type Inference
+    if (!explicitTypeNode) {
+        declaredType = (valueType === Primitives.Void || valueType === Primitives.Null) ? Primitives.Any : valueType;
+    }
+
     try { assertAssignable(declaredType, valueType, `Invalid assignment to '${name}'`); } catch (e) { throw this.error(ctx, e.message); }
+    
     const modifier = this.getModifier(ctx);
-    if (!this.currentScope.resolve(name) || this.currentScope.parent) {
+    // Redefine with inferred type if it was previously Any
+    const existing = this.currentScope.resolve(name);
+    if (existing && existing.type === Primitives.Any) {
+        existing.type = declaredType;
+    } else if (!existing || this.currentScope.parent) {
         try { this.currentScope.define(name, { kind: "variable", type: declaredType, modifier }); } catch(e) {
             if (!e.message.includes("Duplicate symbol") || !this.currentClass) throw e;
         }
@@ -259,15 +274,26 @@ export class SemanticAnalyzer extends ZScriptVisitor {
     if (!sym) throw this.error(ctx, `Internal error: Function '${name}' not found`);
     const type = sym.type;
     const isAsync = ctx.ASYNC && typeof ctx.ASYNC === 'function' && !!ctx.ASYNC();
+    
     const fnScope = new Scope(this.currentScope);
     const prevScope = this.currentScope;
     this.currentScope = fnScope;
-    this.currentFunctionReturnType = type.returnType instanceof PromiseType ? type.returnType.typeArgs[0] : type.returnType;
+
+    if (type.typeParams) for (const tp of type.typeParams) this.currentScope.defineType(tp, new GenericParameterType(tp));
+
+    // Return type inference setup
+    const explicitReturn = this.resolveType(ctx.type());
+    this.currentFunctionReturnType = explicitReturn || Primitives.Any;
+    
     const prevAsync = this.inAsync;
     this.inAsync = isAsync;
-    if (type.typeParams) for (const tp of type.typeParams) this.currentScope.defineType(tp, new GenericParameterType(tp));
     for (const p of type.params) this.currentScope.define(p.name, { kind: "variable", type: p.type, modifier: "public" });
+    
     this.visit(ctx.block());
+
+    // If no explicit return type, we could refine it here if we tracked all returns
+    // For now, let's stick to explicit or Any for stability, but we've improved Var inference.
+
     this.currentFunctionReturnType = null;
     this.inAsync = prevAsync;
     this.currentScope = prevScope;
@@ -358,6 +384,12 @@ export class SemanticAnalyzer extends ZScriptVisitor {
     const member = ctx.Identifier().getText();
     if (baseType instanceof EnumType) return baseType.members.includes(member) ? baseType : Primitives.Any;
     
+    // Primitive members
+    if (baseType === Primitives.String && member === "length") return Primitives.Number;
+    if (baseType === Primitives.String && ["toUpperCase", "toLowerCase", "slice", "split"].includes(member)) {
+        return new FunctionType([], Primitives.Any); // Simplified
+    }
+
     const mapping = {};
     if (baseType instanceof NominalType && baseType.typeParams) {
         for (let i = 0; i < baseType.typeParams.length; i++) mapping[baseType.typeParams[i]] = baseType.typeArgs[i] || Primitives.Any;
@@ -453,15 +485,73 @@ export class SemanticAnalyzer extends ZScriptVisitor {
   }
   
   visitExpressionStatement(ctx) { return this.visit(ctx.expression()); }
-  visitIfStatement(ctx) { assertAssignable(Primitives.Boolean, this.visit(ctx.expression()), "If condition must be Boolean"); this.visit(ctx.statement(0)); if (ctx.ELSE()) this.visit(ctx.statement(1)); }
+  visitIfStatement(ctx) {
+      const condExpr = ctx.expression();
+      const condType = this.visit(condExpr);
+      assertAssignable(Primitives.Boolean, condType, "If condition must be Boolean");
+      
+      const prevScope = this.currentScope;
+      
+      // Flow-based Narrowing (Simplified)
+      // Check for patterns like 'id != null' or 'id == null'
+      if (condExpr.constructor.name === "CompareOpContext") {
+          const op = condExpr.getChild(1).getText();
+          const left = condExpr.expression(0);
+          const right = condExpr.expression(1);
+          
+          if (left.constructor.name === "IdentifierExprContext" && right.getText() === "null") {
+              const name = left.getText();
+              const sym = this.currentScope.resolve(name);
+              if (sym && sym.type instanceof UnionType) {
+                  if (op === "!=") {
+                      // Narrow: remove 'null' from union in the TRUE block
+                      const narrowedType = new UnionType(sym.type.types.filter(t => t !== Primitives.Null));
+                      this.currentScope = new Scope(prevScope);
+                      this.currentScope.define(name, { ...sym, type: narrowedType.types.length === 1 ? narrowedType.types[0] : narrowedType });
+                  }
+              }
+          }
+      }
+
+      this.visit(ctx.statement(0));
+      this.currentScope = prevScope;
+
+      if (ctx.ELSE()) {
+          this.visit(ctx.statement(1));
+      }
+  }
   visitWhileStatement(ctx) { this.visit(ctx.expression()); this.visit(ctx.statement()); }
   visitForStatement(ctx) {
       const prev = this.currentScope;
       this.currentScope = new Scope(prev);
-      if (ctx.varDecl()) this.visit(ctx.varDecl());
-      else if (ctx.expressionStatement()) this.visit(ctx.expressionStatement());
-      if (ctx.expression(0)) this.visit(ctx.expression(0));
-      if (ctx.expression(1)) this.visit(ctx.expression(1));
+      
+      if (ctx.IN() || ctx.OF()) {
+          const id = ctx.Identifier().getText();
+          const exprType = this.visit(ctx.expression(ctx.expression().length - 1));
+          let itemType = Primitives.Any;
+          if (ctx.OF() && exprType instanceof ArrayType) {
+              itemType = exprType.elementType;
+          } else if (ctx.IN()) {
+              itemType = Primitives.String;
+          }
+          this.currentScope.define(id, { kind: "variable", type: itemType, modifier: "public" });
+      } else {
+          if (ctx.varDecl()) this.visit(ctx.varDecl());
+          else if (ctx.expressionStatement()) this.visit(ctx.expressionStatement());
+          
+          const semiColons = ctx.SemiColon ? ctx.SemiColon() : [];
+          const expressions = ctx.expression ? ctx.expression() : [];
+          if (semiColons.length >= 2) {
+              const s1 = semiColons[0].symbol.tokenIndex;
+              const s2 = semiColons[1].symbol.tokenIndex;
+              for (const ex of expressions) {
+                  const idx = ex.start.tokenIndex;
+                  if (idx > s1 && idx < s2) this.visit(ex);
+                  else if (idx > s2) this.visit(ex);
+              }
+          }
+      }
+
       this.visit(ctx.statement());
       this.currentScope = prev;
   }
@@ -542,9 +632,70 @@ export class SemanticAnalyzer extends ZScriptVisitor {
 
   visitAwaitExpr(ctx) {
       if (!this.inAsync) throw this.error(ctx, "'await' only allowed in 'async' functions");
-      const promiseType = this.visit(ctx.expression());
+      const expr = ctx.expression();
+      if (!expr) return Primitives.Any;
+      const promiseType = this.visit(expr);
       if (promiseType instanceof PromiseType) return promiseType.typeArgs[0];
       return promiseType;
+  }
+
+  visitLambdaExpr(ctx) {
+      const prevScope = this.currentScope;
+      this.currentScope = new Scope(prevScope);
+      
+      const params = [];
+      if (ctx.formalParameterList && ctx.formalParameterList()) {
+          for (const p of ctx.formalParameterList().parameter()) {
+              const pType = this.resolveType(p.type()) || Primitives.Any;
+              const pName = p.Identifier().getText();
+              params.push({ name: pName, type: pType });
+              this.currentScope.define(pName, { kind: "variable", type: pType, modifier: "public" });
+          }
+      } else if (ctx.Identifier()) {
+          const pName = ctx.Identifier().getText();
+          params.push({ name: pName, type: Primitives.Any });
+          this.currentScope.define(pName, { kind: "variable", type: Primitives.Any, modifier: "public" });
+      }
+
+      const body = ctx.block() || ctx.expression();
+      let returnType = this.visit(body);
+      if (returnType === undefined || returnType === null) returnType = Primitives.Void;
+      
+      this.currentScope = prevScope;
+      return new FunctionType(params, returnType);
+  }
+
+  visitTernaryExpr(ctx) {
+      this.visit(ctx.expression(0)); // condition
+      const left = this.visit(ctx.expression(1));
+      const right = this.visit(ctx.expression(2));
+      return new UnionType([left, right]);
+  }
+
+  visitNullishCoalescingExpr(ctx) {
+      const left = this.visit(ctx.expression(0));
+      const right = this.visit(ctx.expression(1));
+      return new UnionType([left, right]); // Simplified
+  }
+
+  visitOptionalChainingExpr(ctx) {
+      const base = this.visit(ctx.expression());
+      // Logic for member access here would be complex, simplified to Any for now
+      return Primitives.Any; 
+  }
+
+  visitTypeofExpr(ctx) {
+      this.visit(ctx.expression());
+      return Primitives.String;
+  }
+
+  visitObjectExpr(ctx) { return this.visit(ctx.objectLiteral()); }
+  visitObjectLiteral(ctx) {
+      const fields = {};
+      for (const prop of ctx.property()) {
+          fields[prop.Identifier().getText()] = this.visit(prop.expression());
+      }
+      return new InterfaceType("anonymous", fields);
   }
 
   visitComptimeStmt(ctx) { return Primitives.Void; }

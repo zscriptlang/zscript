@@ -5,7 +5,7 @@ import { Config, Status, getVersion, Machine } from "lib/lib.zs";
 fn main(): Number {
     defer console.log("Exiting main()");
 
-    let version: String = getVersion(); // Error: getVersion returns Number
+    let version: Number = getVersion();
 
     let cfg: Config = new Config({
         id: 101,

@@ -35,11 +35,14 @@ comptime {
 // 4. Compile-time fetch
 comptime {
     try {
-        let p = fetch("https://api.github.com/zen");
-        let resp = await p;
-        let t = resp.text();
-        let text = await t;
-        ZScript.emit("const GITHUB_ZEN = \"" + text + "\";\n");
+        let resp = await fetch("https://api.github.com/zen");
+        if (resp.status == 200) {
+            let text = await resp.text();
+            text = text.replace(/"/g, '\\"').replace(/\n/g, ' ');
+            ZScript.emit("const GITHUB_ZEN = \"" + text + "\";\n");
+        } else {
+            ZScript.emit("const GITHUB_ZEN = \"Peace of mind is better than any GitHub zen (API limit?)\";\n");
+        }
     } catch (e) {
         ZScript.emit("const GITHUB_ZEN = \"Peace of mind is better than any GitHub zen\";\n");
     }
