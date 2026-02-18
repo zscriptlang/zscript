@@ -5,6 +5,7 @@ on:
     tags:
       - "v*"
 
+# This block is what makes it work without manual settings changes
 permissions:
   contents: write
 
@@ -60,9 +61,7 @@ jobs:
           bun-version: 1.3.6
 
       - name: Install dependencies
-        # Updated path to new src/compiler directory
         working-directory: src/compiler
-        shell: bash
         run: bun install
 
       - name: Build binary
@@ -70,7 +69,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          # We compile to 'zsc' or 'zsc.exe' exactly as requested
+          # Determine output name (zsc or zsc.exe)
           if [[ "${{ matrix.target }}" == *"windows"* ]]; then
             OUTFILE="dist/zsc.exe"
           else
@@ -83,13 +82,12 @@ jobs:
             --target=${{ matrix.target }} \
             --outfile "$OUTFILE"
 
-      # -------- Packaging Logic --------
       - name: Package Assets
         working-directory: src/compiler/dist
         shell: bash
         run: |
           if [[ "${{ matrix.target }}" == *"windows"* ]]; then
-            # Archive contains 'zsc.exe' but zip is named by platform
+            # File inside is zsc.exe, Zip name is unique per platform
             zip zsc-${{ matrix.name }}.zip zsc.exe
           else
             chmod +x zsc
@@ -99,6 +97,7 @@ jobs:
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
         with:
+          # This ensures it picks up the files from the correct new directory
           files: |
             src/compiler/dist/*.zip
             src/compiler/dist/*.tar.gz
