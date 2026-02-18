@@ -1,0 +1,11 @@
+{
+  "name": "zsc",
+  "version": "1.0.0",
+  "type": "module",
+  "bin": {
+    "zsc": "./zsc.js"
+  },
+  "dependencies": {
+    "antlr4": "^4.13.2"
+  }
+}
