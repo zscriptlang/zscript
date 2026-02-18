@@ -46,7 +46,9 @@ ZScript includes everything you love about TypeScript (static typing, generics, 
 ## 🛠 Installation
 
 Install the ZScript compiler (zsc) via Latest Releases.
+<br>
 Work in progress for the Install Scripts.
+<br>
 v1.0.0 : https://github.com/zscriptlang/zscript/releases/tag/v1.0.0
 
 ---
