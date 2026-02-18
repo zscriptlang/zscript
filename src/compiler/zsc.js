@@ -18,7 +18,7 @@ import { MacroExpander } from "./macro.js";
    METADATA
 ========================= */
 
-const VERSION = "0.5.0";
+const VERSION = "1.0.0";
 
 /* =========================
    CLI ARG PARSING
