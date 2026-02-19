@@ -4,7 +4,7 @@
 
 # ZScript (Also called Zed Script)
 
-**ZScript** is a modern, high-performance, typesafe language designed for application-scale development. While it feels familiar to JavaScript and TypeScript users, ZScript introduces advanced meta-programming capabilities—like **Macros** and **Compile-time execution**—that push it far beyond the limits of standard transpilers.
+**ZScript** is a modern, high-performance, typesafe language designed for application-scale development. While it feels familiar to JavaScript and TypeScript users, ZScript introduces advanced meta-programming capabilities—like **Macros** and **Compile-time execution**.
 
 ZScript compiles to readable, standards-based JavaScript or can be bundled into native binaries for Bun, Node.js, and browser environments.
 
@@ -56,9 +56,11 @@ v1.0.0 : https://github.com/zscriptlang/zscript/releases/tag/v1.0.0
 ## 🤝 Contribute
 ZScript is an open-source project and we welcome contributions!
 <br>
+Language proposal: You can propose for a feature in ZScript by making a issue for it.
+<br>
 Submit Bugs: Open an issue to help us improve.
 <br>
-Code Review: Check out our src/compiler to see how our semantic analyzer works.
+Code Review: Check out our src/compiler to see how zsc works.
 <br>
 Registry: Publish your own ZScript packages to pkg.zscript.us.kg.
 
@@ -69,7 +71,7 @@ Hi everyone, ZScript is a powerful language and a strong candidate for feature.
 Currently i am working on ZScript alone i will be very happy is some devs join me.
 <br>
 Please if you want to help, help me in buying A Domain for ZScript.
-Also need to mention some things which are the pillar of ZScript.
+Also need to mention some things which are the pillar of ZScript:
  - Bun: Fast JS Runtime(Base of zsc).
  - ANTLR: Powerful parser generator(Base of Grammar).
  - Jules: This AI helped very much in coding the language.
